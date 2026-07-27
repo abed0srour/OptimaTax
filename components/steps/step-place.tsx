@@ -1,9 +1,8 @@
 "use client";
 
 import { House, MapPin, User, UserMinus, Users } from "lucide-react";
-import { Label } from "@/components/ui/label";
 import { ChoiceGroup } from "@/components/wizard/choice-group";
-import { StateCombobox } from "@/components/wizard/state-combobox";
+import { StateSearch } from "@/components/wizard/state-search";
 import { StepCard, StepNav } from "@/components/wizard/step-card";
 import { filingStatuses } from "@/lib/taxData";
 import type { FilingStatus } from "@/lib/types";
@@ -35,10 +34,11 @@ export function StepPlace({
       title="Where do you file?"
       footer={<StepNav onNext={onNext} />}
     >
-      <div className="space-y-2">
-        <Label className="text-[0.9rem] font-medium">State of residence</Label>
-        <StateCombobox value={stateCode} onChange={onStateChange} />
-      </div>
+      <StateSearch
+        label="State of residence"
+        value={stateCode}
+        onChange={onStateChange}
+      />
 
       <ChoiceGroup
         label="Federal filing status"

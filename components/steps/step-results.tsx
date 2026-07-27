@@ -10,7 +10,6 @@ import {
 } from "lucide-react";
 import { BracketTable } from "@/components/results/bracket-table";
 import { KhumsCoverage } from "@/components/results/khums-coverage";
-import { Limitations } from "@/components/results/limitations";
 import { TaxChart } from "@/components/results/tax-chart";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -93,7 +92,6 @@ export function StepResults({
             result={better ? scenarioB.state : comparison.scenarioA.state}
           />
         ) : null}
-        <Limitations stateNote={stateEntry.note} />
       </div>
 
       <div className="flex flex-col gap-2 pt-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
