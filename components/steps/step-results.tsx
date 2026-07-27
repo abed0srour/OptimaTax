@@ -165,9 +165,9 @@ function Verdict({ comparison }: { comparison: TaxComparison }) {
         </p>
         <p className="max-w-prose text-[0.95rem] leading-relaxed text-foreground/80">
           {better
-            ? `less tax by giving ${formatCurrency(
+            ? `less tax by donating ${formatCurrency(
                 donationEntered,
-              )}. The gift really costs you ${formatCurrency(
+              )} to a 501(c)(3). The gift really costs you ${formatCurrency(
                 Math.max(0, netCostOfGiving),
               )}.`
             : donationEntered > 0

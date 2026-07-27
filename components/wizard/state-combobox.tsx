@@ -40,9 +40,16 @@ export function StateCombobox({
   const selected = states.find((state) => state.code === value);
 
   const list = (
-    <Command>
+    /*
+     * The Command is height-bounded and the list is the flex child that gives:
+     * without `min-h-0` a flex item refuses to shrink below its content, so the
+     * list grows past the dialog and nothing scrolls. `svh` keeps it clear of a
+     * phone's on-screen keyboard, which otherwise covers the whole list once the
+     * search input takes focus.
+     */
+    <Command className="flex max-h-[58svh] flex-col sm:max-h-88">
       <CommandInput placeholder="State or code — NY, Texas…" />
-      <CommandList>
+      <CommandList className="max-h-none min-h-0 flex-1 overflow-y-auto overscroll-contain show-scrollbar">
         <CommandEmpty>No state found.</CommandEmpty>
         {states.map((state) => (
           <CommandItem
@@ -106,7 +113,7 @@ export function StateCombobox({
           onOpenChange={setOpen}
           title="Choose your state"
           description="Search by state name or postal code."
-          className="top-16 max-h-[75vh] translate-y-0"
+          className="top-12 translate-y-0 overflow-hidden"
         >
           {list}
         </CommandDialog>

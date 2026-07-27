@@ -96,7 +96,10 @@ function CommandList({
     <CommandPrimitive.List
       data-slot="command-list"
       className={cn(
-        "no-scrollbar max-h-72 scroll-py-1 overflow-x-hidden overflow-y-auto outline-none",
+        // `no-scrollbar` removed from the shadcn default: it hides the bar via
+        // ::-webkit-scrollbar, which outranks any `scrollbar-width` an override
+        // can set, leaving a long list looking like it does not scroll.
+        "max-h-72 scroll-py-1 overflow-x-hidden overflow-y-auto outline-none",
         className
       )}
       {...props}

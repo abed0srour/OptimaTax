@@ -8,6 +8,7 @@ import { StepIncome } from "@/components/steps/step-income";
 import { StepPlace } from "@/components/steps/step-place";
 import { StepResults } from "@/components/steps/step-results";
 import { StepTax } from "@/components/steps/step-tax";
+import { ContextBar } from "@/components/wizard/context-bar";
 import { Stepper, type StepMeta } from "@/components/wizard/stepper";
 import { parseMoney } from "@/lib/format";
 import { buildComparison } from "@/lib/tax";
@@ -85,12 +86,16 @@ export default function Home() {
       <Header />
 
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 pt-6 pb-20 sm:px-6">
-        <div className="mb-6">
+        <div className="mb-5 space-y-3">
           <Stepper
             steps={STEPS}
             current={step}
             furthest={furthest}
             onJump={goTo}
+          />
+          <ContextBar
+            stateEntry={comparison.stateEntry}
+            filingStatus={filingStatus}
           />
         </div>
 
@@ -109,6 +114,7 @@ export default function Home() {
             incomeText={incomeText}
             expensesText={expensesText}
             netProfit={comparison.netProfit}
+            rawNetProfit={parseMoney(incomeText) - parseMoney(expensesText)}
             onIncomeChange={setIncomeText}
             onExpensesChange={setExpensesText}
             onBack={() => goTo(0)}
@@ -122,6 +128,10 @@ export default function Home() {
             stateEntry={comparison.stateEntry}
             onBack={() => goTo(1)}
             onDonate={() => goTo(3)}
+            onSkip={() => {
+              setDonationText("");
+              goTo(4);
+            }}
           />
         ) : null}
 

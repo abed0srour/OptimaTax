@@ -144,6 +144,33 @@ html {
   -webkit-text-size-adjust: 100%;
 }
 
+/*
+ * cmdk's list ships shadcn's `no-scrollbar`, which hides the bar through
+ * `::-webkit-scrollbar` — and that beats `scrollbar-width` in Chromium. A long
+ * list that gives no sign it scrolls reads as a list that cannot, so put the
+ * bar back where the list is meant to be scrolled.
+ */
+@utility show-scrollbar {
+  -ms-overflow-style: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--input) transparent;
+
+  &::-webkit-scrollbar {
+    display: block;
+    width: 0.625rem;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    border: 3px solid var(--popover);
+    border-radius: 9999px;
+    background-color: var(--input);
+  }
+}
+
 /* Tabular figures keep money columns from jittering as values update. */
 .tnum {
   font-variant-numeric: tabular-nums;

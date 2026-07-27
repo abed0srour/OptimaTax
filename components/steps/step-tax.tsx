@@ -19,11 +19,13 @@ export function StepTax({
   stateEntry,
   onBack,
   onDonate,
+  onSkip,
 }: {
   scenario: ScenarioBreakdown;
   stateEntry: StateTaxEntry;
   onBack: () => void;
   onDonate: () => void;
+  onSkip: () => void;
 }) {
   return (
     <StepCard
@@ -31,7 +33,7 @@ export function StepTax({
       eyebrow="Step 3 of 5"
       title="This is what you owe"
       footer={
-        <CardFooter className="flex-col-reverse gap-2 bg-muted/40 px-4 py-3 sm:flex-row sm:justify-between sm:gap-3 sm:px-6">
+        <CardFooter className="bg-muted/40 px-4 py-3 sm:px-6">
           <Button
             type="button"
             variant="ghost"
@@ -40,14 +42,6 @@ export function StepTax({
           >
             <ArrowLeft data-icon="inline-start" />
             Back
-          </Button>
-          <Button
-            type="button"
-            onClick={onDonate}
-            className="h-10 w-full px-5 text-[0.9rem] sm:w-auto"
-          >
-            <HandHeart data-icon="inline-start" />
-            Give to a 501(c)(3)
           </Button>
         </CardFooter>
       }
@@ -74,6 +68,37 @@ export function StepTax({
           </dd>
         </div>
       </dl>
+
+      {/*
+       * Two explicit outcomes separated by "or". Giving is a choice, not the
+       * next required step, and a lone primary button reads as though the tax
+       * bill obliges you to donate.
+       */}
+      <div className="space-y-2 pt-1">
+        <Button
+          type="button"
+          onClick={onDonate}
+          className="h-11 w-full text-[0.9rem]"
+        >
+          <HandHeart data-icon="inline-start" />
+          Give to a 501(c)(3)
+        </Button>
+
+        <div className="flex items-center gap-3">
+          <span className="h-px flex-1 bg-border" />
+          <span className="text-xs text-muted-foreground">or</span>
+          <span className="h-px flex-1 bg-border" />
+        </div>
+
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onSkip}
+          className="h-11 w-full text-[0.9rem]"
+        >
+          I&apos;m not donating — see my results
+        </Button>
+      </div>
     </StepCard>
   );
 }
