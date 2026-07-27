@@ -1,6 +1,6 @@
 "use client";
 
-import { useId } from "react";
+import { useId, type ReactNode } from "react";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -8,6 +8,7 @@ export interface Choice<T extends string> {
   value: T;
   label: string;
   detail?: string;
+  icon?: ReactNode;
 }
 
 /**
@@ -68,7 +69,18 @@ export function ChoiceGroup<T extends string>({
                 {selected ? <Check className="size-3" strokeWidth={3.5} /> : null}
               </span>
 
-              <span className="grid gap-0.5">
+              {choice.icon ? (
+                <span
+                  className={cn(
+                    "shrink-0 transition-colors [&_svg]:size-4.5",
+                    selected ? "text-primary" : "text-muted-foreground",
+                  )}
+                >
+                  {choice.icon}
+                </span>
+              ) : null}
+
+              <span className="grid min-w-0 gap-0.5">
                 <span
                   className={cn(
                     "text-sm leading-snug",

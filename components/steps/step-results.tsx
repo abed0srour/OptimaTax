@@ -1,6 +1,14 @@
 "use client";
 
-import { ArrowLeft, RotateCcw, TriangleAlert } from "lucide-react";
+import {
+  ArrowLeft,
+  Landmark,
+  MapPin,
+  Moon,
+  RotateCcw,
+  TrendingDown,
+  TriangleAlert,
+} from "lucide-react";
 import { BracketTable } from "@/components/results/bracket-table";
 import { Limitations } from "@/components/results/limitations";
 import { TaxChart } from "@/components/results/tax-chart";
@@ -42,8 +50,11 @@ export function StepResults({
 
       {khums.obligation > 0 ? (
         <Card className="rounded-2xl shadow-sm ring-foreground/8 [--card-spacing:--spacing(5)]">
-          <CardContent className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-            <span className="text-sm font-medium">Khums</span>
+          <CardContent className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+            <span className="flex items-center gap-2 text-sm font-medium">
+              <Moon className="size-4 shrink-0 text-give" />
+              Khums
+            </span>
             <span className="text-sm text-muted-foreground">
               <span className="tnum font-semibold text-give-ink">
                 {formatCurrency(khums.fulfilled)}
@@ -90,11 +101,13 @@ export function StepResults({
       <div className="space-y-2">
         <BracketTable
           title="Federal brackets"
+          icon={<Landmark />}
           result={better ? scenarioB.federal : comparison.scenarioA.federal}
         />
         {stateEntry.tax_type !== "none" ? (
           <BracketTable
             title={`${stateEntry.name} brackets`}
+            icon={<MapPin />}
             result={better ? scenarioB.state : comparison.scenarioA.state}
           />
         ) : null}
@@ -138,7 +151,8 @@ function Verdict({ comparison }: { comparison: TaxComparison }) {
       )}
     >
       <CardContent className="space-y-2">
-        <p className="text-[0.8rem] font-semibold tracking-wider text-muted-foreground uppercase">
+        <p className="flex items-center gap-2 text-[0.8rem] font-semibold tracking-wider text-muted-foreground uppercase">
+          {better ? <TrendingDown className="size-4 shrink-0 text-keep" /> : null}
           {better ? "Better option · with donation" : "Both options cost the same"}
         </p>
         <p

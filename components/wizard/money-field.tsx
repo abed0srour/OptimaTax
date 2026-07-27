@@ -1,6 +1,6 @@
 "use client";
 
-import { useId } from "react";
+import { useId, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
  */
 export function MoneyField({
   label,
+  icon,
   value,
   onChange,
   placeholder = "0",
@@ -20,6 +21,7 @@ export function MoneyField({
   tone = "default",
 }: {
   label: string;
+  icon?: ReactNode;
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
@@ -30,8 +32,21 @@ export function MoneyField({
 
   return (
     <div className="space-y-2">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-        <Label htmlFor={id} className="text-[0.9rem] font-medium">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+        <Label
+          htmlFor={id}
+          className="flex items-center gap-2 text-[0.9rem] font-medium"
+        >
+          {icon ? (
+            <span
+              className={cn(
+                "shrink-0 [&_svg]:size-4",
+                tone === "give" ? "text-give" : "text-muted-foreground",
+              )}
+            >
+              {icon}
+            </span>
+          ) : null}
           {label}
         </Label>
         {action ? (

@@ -1,12 +1,19 @@
 "use client";
 
-import { MapPin } from "lucide-react";
+import { House, MapPin, User, UserMinus, Users } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { ChoiceGroup } from "@/components/wizard/choice-group";
 import { StateCombobox } from "@/components/wizard/state-combobox";
 import { StepCard, StepNav } from "@/components/wizard/step-card";
 import { filingStatuses } from "@/lib/taxData";
 import type { FilingStatus } from "@/lib/types";
+
+const STATUS_ICONS: Record<FilingStatus, React.ReactNode> = {
+  single: <User />,
+  married_joint: <Users />,
+  head_of_household: <House />,
+  married_separate: <UserMinus />,
+};
 
 export function StepPlace({
   stateCode,
@@ -40,6 +47,7 @@ export function StepPlace({
         choices={filingStatuses.map((status) => ({
           value: status.id,
           label: status.label,
+          icon: STATUS_ICONS[status.id],
         }))}
       />
     </StepCard>

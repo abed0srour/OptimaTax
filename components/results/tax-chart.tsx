@@ -1,3 +1,4 @@
+import { Table2 as TableIcon } from "lucide-react";
 import { Disclosure } from "@/components/ui-extras/disclosure";
 import {
   Card,
@@ -110,7 +111,7 @@ export function TaxChart({ comparison }: { comparison: TaxComparison }) {
           })}
         </div>
 
-        <Disclosure title="View as table">
+        <Disclosure title="View as table" icon={<TableIcon />}>
           <Table className="text-xs">
             <TableHeader>
               <TableRow className="hover:bg-transparent">

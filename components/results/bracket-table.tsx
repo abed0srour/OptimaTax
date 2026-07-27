@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Disclosure } from "@/components/ui-extras/disclosure";
 import {
   Table,
@@ -16,16 +17,19 @@ import type { ProgressiveResult } from "@/lib/types";
  */
 export function BracketTable({
   title,
+  icon,
   result,
   emptyMessage = "No tax due at this income level.",
 }: {
   title: string;
+  icon?: ReactNode;
   result: ProgressiveResult;
   emptyMessage?: string;
 }) {
   return (
     <Disclosure
       title={title}
+      icon={icon}
       aside={<span className="tnum">{formatCurrency(result.tax)}</span>}
       className="bg-card"
     >

@@ -1,3 +1,4 @@
+import { FileText } from "lucide-react";
 import { Disclosure } from "@/components/ui-extras/disclosure";
 import { formatPercent } from "@/lib/format";
 import { dataNotes, federalTax, stateTaxYear, taxYear } from "@/lib/taxData";
@@ -5,7 +6,11 @@ import { dataNotes, federalTax, stateTaxYear, taxYear } from "@/lib/taxData";
 /** Everything this model does not do, kept honest and kept out of the way. */
 export function Limitations({ stateNote }: { stateNote?: string }) {
   return (
-    <Disclosure title="Scope and limitations" aside="Read before acting">
+    <Disclosure
+      title="Scope and limitations"
+      icon={<FileText />}
+      aside="Read before acting"
+    >
       <ul className="list-disc space-y-2 pl-4 text-xs leading-relaxed text-muted-foreground">
         <li>
           Ordinary income only. Payroll and self-employment tax, AMT, QBI, credits, and

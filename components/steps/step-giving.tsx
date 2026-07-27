@@ -1,12 +1,18 @@
 "use client";
 
-import { Check, HandHeart, TriangleAlert } from "lucide-react";
+import {
+  Check,
+  HandCoins,
+  HandHeart,
+  Moon,
+  Scale,
+  TriangleAlert,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Disclosure } from "@/components/ui-extras/disclosure";
 import { ChoiceGroup } from "@/components/wizard/choice-group";
 import { MoneyField } from "@/components/wizard/money-field";
-import { Readout } from "@/components/wizard/readout";
 import { StepCard, StepNav } from "@/components/wizard/step-card";
 import { formatCurrency, toMoneyInput } from "@/lib/format";
 import type { DeductionMode, KhumsBreakdown } from "@/lib/types";
@@ -60,30 +66,37 @@ export function StepGiving({
         <StepNav onBack={onBack} onNext={onNext} nextLabel="See my results" />
       }
     >
-      <Readout
-        label="Your khums this year"
-        value={formatCurrency(khums.obligation)}
-        tone="give"
-        action={
-          khums.obligation > 0 ? (
+      <div className="space-y-2">
+        <MoneyField
+          label="Donation to a 501(c)(3)"
+          icon={<HandCoins />}
+          value={donationText}
+          onChange={onDonationChange}
+          tone="give"
+        />
+
+        {/* The target sits under the field it fills, small enough to read as a hint. */}
+        {khums.obligation > 0 ? (
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-lg bg-give-soft px-3 py-2">
+            <span className="flex items-center gap-1.5 text-xs text-give-ink">
+              <Moon className="size-3.5 shrink-0" />
+              Your khums this year
+              <span className="tnum font-semibold">
+                {formatCurrency(khums.obligation)}
+              </span>
+            </span>
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
+              size="xs"
               onClick={() => onDonationChange(toMoneyInput(khums.obligation))}
-              className="h-9 bg-card px-4 text-[0.85rem] font-semibold"
+              className="font-semibold text-give-ink hover:bg-give/10"
             >
               Give exactly this
             </Button>
-          ) : undefined
-        }
-      />
-
-      <MoneyField
-        label="Donation to a 501(c)(3)"
-        value={donationText}
-        onChange={onDonationChange}
-        tone="give"
-      />
+          </div>
+        ) : null}
+      </div>
 
       {khums.obligation > 0 ? (
         <div
@@ -140,7 +153,8 @@ export function StepGiving({
       ) : null}
 
       <Disclosure
-        title="How the deduction stacks"
+        icon={<Scale />}
+        title="Deduction model"
         aside={deductionMode === "stacked" ? "Stacked" : "Itemized"}
       >
         <ChoiceGroup
