@@ -6,48 +6,95 @@ export type FilingStatus =
 
 export type StateTaxType = "none" | "flat" | "graduated";
 
-/** A single progressive bracket. `max: null` marks the open-ended top bracket. */
+/**
+ * A bracket exactly as it appears in the JSON, following the IRS table
+ * convention where `min` sits one dollar above the previous bracket's `max`.
+ * Never hand these to the engine — run them through `normalizeBrackets` first.
+ */
+export interface RawBracket {
+  rate: number;
+  min: number;
+  max: number | null;
+}
+
+/**
+ * A bracket with half-open `[min, max)` bounds, so consecutive brackets meet
+ * exactly and no dollar falls through a boundary. `max: null` is open-ended.
+ */
 export interface Bracket {
   rate: number;
   min: number;
   max: number | null;
 }
 
-/** Keyed by filing status, with `default` as the fallback for any missing key. */
-export type ByStatus<T> = Partial<Record<FilingStatus, T>> & { default?: T };
+// ---------------------------------------------------------------- data files
 
 export interface FederalTaxData {
   tax_year: number;
-  source_note: string;
-  filing_statuses: { id: FilingStatus; label: string }[];
-  standard_deductions: Record<FilingStatus, number>;
-  brackets: Record<FilingStatus, Bracket[]>;
+  source: string;
+  notes: string;
+  ordinary_income_tax: {
+    filing_statuses: Record<
+      FilingStatus,
+      { name: string; standard_deduction: number; brackets: RawBracket[] }
+    >;
+  };
+  long_term_capital_gains_and_qualified_dividends: {
+    notes: string;
+    filing_statuses: Record<FilingStatus, { brackets: RawBracket[] }>;
+  };
+  net_investment_income_tax: {
+    name: string;
+    rate: number;
+    notes: string;
+    magi_thresholds: Record<FilingStatus, number>;
+  };
+  additional_medicare_tax: {
+    name: string;
+    rate: number;
+    notes: string;
+    wage_thresholds: Record<FilingStatus, number>;
+  };
+  personal_exemption: { amount: number; notes: string };
   charitable_deduction_limits: {
-    note: string;
+    notes: string;
     cash_public_charity_agi_limit: number;
   };
 }
 
+export interface RawStateEntry {
+  name: string;
+  tax_type: StateTaxType;
+  /** Present for `flat` states; `none` states carry a literal 0. */
+  rate?: number;
+  /** Present for `graduated` states only. Single-filer schedule. */
+  brackets?: RawBracket[];
+}
+
+export interface StateTaxData {
+  jurisdiction_year: number;
+  notes: string;
+  /** Keyed by two-letter postal code. */
+  states: Record<string, RawStateEntry>;
+}
+
+// ------------------------------------------------------------ resolved state
+
+/** A state after the loader has keyed it, normalized it, and annotated it. */
 export interface StateTaxEntry {
   code: string;
   name: string;
   tax_type: StateTaxType;
-  /** Present only when `tax_type === "flat"`. */
   rate?: number;
-  /** Present only when `tax_type === "graduated"`. */
-  brackets?: ByStatus<Bracket[]>;
-  standard_deduction: ByStatus<number>;
-  /** Absent means the state does allow a charitable deduction. */
-  allows_charitable_deduction?: boolean;
+  /** Normalized half-open brackets. Empty for `none` and `flat` states. */
+  brackets: Bracket[];
+  /** False where the state grants no deduction for charitable contributions. */
+  allowsCharitableDeduction: boolean;
+  /** Caveat surfaced in the UI for this specific state, if any. */
   note?: string;
 }
 
-export interface StateTaxData {
-  tax_year: number;
-  source_note: string;
-  lookup_rules: Record<string, string>;
-  states: StateTaxEntry[];
-}
+// ----------------------------------------------------------------- results
 
 /** One line of the "which bracket contributed what" audit trail. */
 export interface BracketSlice {
@@ -120,7 +167,8 @@ export interface TaxComparison {
 /**
  * How the charitable deduction stacks against the standard deduction.
  * - `stacked`   — subtract both (the model requested in the project brief).
- * - `itemized`  — IRS rule: take the greater of the standard deduction or itemized total.
+ * - `itemized`  — IRS rule: take the greater of the standard deduction or the
+ *                 itemized total.
  */
 export type DeductionMode = "stacked" | "itemized";
 

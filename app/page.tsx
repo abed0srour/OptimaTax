@@ -9,7 +9,15 @@ import { ScenarioCard } from "@/components/ScenarioCard";
 import { StatTile } from "@/components/StatTile";
 import { formatCurrency, formatPercent, parseMoney, toMoneyInput } from "@/lib/format";
 import { buildComparison, KHUMS_RATE } from "@/lib/tax";
-import { federalTax, filingStatuses, states, stateTax } from "@/lib/taxData";
+import {
+  dataNotes,
+  federalStandardDeduction,
+  federalTax,
+  filingStatuses,
+  states,
+  stateTaxYear,
+  taxYear,
+} from "@/lib/taxData";
 import type { DeductionMode, FilingStatus } from "@/lib/types";
 
 const stateOptions = states.map((state) => ({
@@ -107,8 +115,8 @@ export default function Dashboard() {
                   options={statusOptions}
                   onChange={(value) => setFilingStatus(value as FilingStatus)}
                   hint={`Standard deduction ${formatCurrency(
-                    federalTax.standard_deductions[filingStatus],
-                  )} for ${federalTax.tax_year}`}
+                    federalStandardDeduction(filingStatus),
+                  )} for ${taxYear}`}
                 />
 
                 <div className="space-y-5 border-t border-slate-200 pt-5 dark:border-slate-800">
@@ -291,8 +299,8 @@ function Header() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Pill>Tax year {federalTax.tax_year}</Pill>
-          <Pill>{stateTax.states.length} jurisdictions</Pill>
+          <Pill>Tax year {taxYear}</Pill>
+          <Pill>{states.length} jurisdictions</Pill>
         </div>
       </div>
     </header>
@@ -334,8 +342,26 @@ function Disclaimer({ stateNote }: { stateNote?: string }) {
       </p>
       <ul className="list-disc space-y-1 pl-4">
         <li>
-          Ordinary income only. Payroll and self-employment tax, AMT, the net investment
-          income tax, QBI, capital gains rates, credits, and phaseouts are not modeled.
+          Ordinary income only. Payroll and self-employment tax, AMT, QBI, credits, and
+          phaseouts are not modeled. The {taxYear} dataset also carries long-term capital
+          gains brackets, the {formatPercent(
+            federalTax.net_investment_income_tax.rate,
+            1,
+          )}{" "}
+          net investment income tax, and the{" "}
+          {formatPercent(federalTax.additional_medicare_tax.rate, 1)} additional Medicare
+          tax — none of which this dashboard applies yet.
+        </li>
+        <li className="font-medium text-slate-700 dark:text-slate-300">
+          State brackets in this dataset are <strong>single-filer schedules only</strong>,
+          applied regardless of the filing status you select. Married-filing-jointly
+          thresholds are wider in many states, so joint filers will see state tax
+          overstated here.
+        </li>
+        <li className="font-medium text-slate-700 dark:text-slate-300">
+          The dataset carries <strong>no state standard deductions or exemptions</strong>,
+          so state taxable income is the full net profit less any deductible gift. Real
+          state bills will generally be lower.
         </li>
         <li>
           State figures cover state-level income tax only — city and county income taxes
@@ -348,7 +374,8 @@ function Disclaimer({ stateNote }: { stateNote?: string }) {
         </li>
         {stateNote ? <li>{stateNote}</li> : null}
         <li>
-          {federalTax.source_note} {stateTax.source_note}
+          Federal: {dataNotes.federalSource}. State schedules are for{" "}
+          {stateTaxYear} — {dataNotes.stateNotes}
         </li>
         <li className="font-medium text-slate-700 dark:text-slate-300">
           Educational estimate, not tax or religious advice. Confirm with a qualified CPA

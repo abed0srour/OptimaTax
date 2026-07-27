@@ -1,9 +1,8 @@
 import {
+  federalBrackets,
   federalStandardDeduction,
   federalTax,
   getState,
-  resolveByStatus,
-  stateStandardDeduction,
 } from "./taxData";
 import type {
   Bracket,
@@ -34,6 +33,9 @@ const clampToZero = (n: number) => (Number.isFinite(n) && n > 0 ? n : 0);
  * Walks a progressive schedule chunk by chunk, taxing only the slice of income
  * that falls inside each bracket. Returns the per-bracket audit trail alongside
  * the total so the UI can show its work.
+ *
+ * Expects normalized half-open brackets from `normalizeBrackets` — raw IRS-table
+ * brackets would leak a dollar at every boundary.
  */
 export function calculateProgressiveTax(
   taxableIncome: number,
@@ -77,17 +79,19 @@ export function calculateFederalTax(
   taxableIncome: number,
   status: FilingStatus,
 ): ProgressiveResult {
-  return calculateProgressiveTax(taxableIncome, federalTax.brackets[status]);
+  return calculateProgressiveTax(taxableIncome, federalBrackets(status));
 }
 
 /**
  * State income tax, dispatched on the state's `tax_type`:
  * `none` → $0, `flat` → single-rate, `graduated` → progressive loop.
+ *
+ * The 2026 dataset carries single-filer schedules only, so filing status does
+ * not enter the state calculation.
  */
 export function calculateStateTax(
   taxableIncome: number,
   state: StateTaxEntry,
-  status: FilingStatus,
 ): ProgressiveResult {
   switch (state.tax_type) {
     case "none":
@@ -97,15 +101,11 @@ export function calculateStateTax(
       const rate = state.rate ?? 0;
       // Modelled as a one-bracket schedule so flat and graduated states share
       // the same result shape and the same breakdown UI.
-      return calculateProgressiveTax(taxableIncome, [
-        { rate, min: 0, max: null },
-      ]);
+      return calculateProgressiveTax(taxableIncome, [{ rate, min: 0, max: null }]);
     }
 
-    case "graduated": {
-      const brackets = resolveByStatus<Bracket[]>(state.brackets, status, []);
-      return calculateProgressiveTax(taxableIncome, brackets);
-    }
+    case "graduated":
+      return calculateProgressiveTax(taxableIncome, state.brackets);
 
     default:
       return EMPTY_RESULT;
@@ -158,19 +158,18 @@ function buildScenario(
   state: StateTaxEntry,
   mode: DeductionMode,
 ): ScenarioBreakdown {
-  const fedStandard = federalStandardDeduction(status);
-  const stateStandard = stateStandardDeduction(state, status);
-  const stateDonation = state.allows_charitable_deduction === false ? 0 : donation;
-
   const federalTaxableIncome = clampToZero(
-    netProfit - totalDeduction(fedStandard, donation, mode),
+    netProfit - totalDeduction(federalStandardDeduction(status), donation, mode),
   );
-  const stateTaxableIncome = clampToZero(
-    netProfit - totalDeduction(stateStandard, stateDonation, mode),
-  );
+
+  // The 2026 state dataset carries no standard deductions or exemptions, so the
+  // only subtraction available at state level is the gift itself — and only in
+  // states that allow a charitable deduction at all.
+  const stateDonation = state.allowsCharitableDeduction ? donation : 0;
+  const stateTaxableIncome = clampToZero(netProfit - stateDonation);
 
   const federal = calculateFederalTax(federalTaxableIncome, status);
-  const stateResult = calculateStateTax(stateTaxableIncome, state, status);
+  const stateResult = calculateStateTax(stateTaxableIncome, state);
   const totalTax = federal.tax + stateResult.tax;
   const afterTaxIncome = netProfit - totalTax;
 
@@ -239,7 +238,7 @@ export function buildComparison(input: CalculatorInput): TaxComparison {
     taxSavings,
     netCostOfGiving: donationEntered - taxSavings,
     givingDiscount: donationEntered > 0 ? taxSavings / donationEntered : 0,
-    stateAllowsCharitableDeduction: state.allows_charitable_deduction !== false,
+    stateAllowsCharitableDeduction: state.allowsCharitableDeduction,
     stateEntry: state,
   };
 }
