@@ -93,10 +93,7 @@ export default function Home() {
             furthest={furthest}
             onJump={goTo}
           />
-          <ContextBar
-            stateEntry={comparison.stateEntry}
-            filingStatus={filingStatus}
-          />
+          <ContextBar comparison={comparison} filingStatus={filingStatus} />
         </div>
 
         {step === 0 ? (
@@ -139,7 +136,6 @@ export default function Home() {
           <StepGiving
             donationText={donationText}
             deductionMode={deductionMode}
-            khums={comparison.khums}
             onDonationChange={setDonationText}
             onDeductionModeChange={setDeductionMode}
             onBack={() => goTo(2)}
@@ -174,7 +170,7 @@ function Header() {
           <div className="leading-tight">
             <p className="text-sm font-semibold tracking-tight">OptimaTax</p>
             <p className="text-xs text-muted-foreground">
-              Tax, giving, and khums — step by step
+              Tax and giving — step by step
             </p>
           </div>
         </div>

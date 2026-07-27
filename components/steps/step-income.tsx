@@ -71,8 +71,8 @@ export function StepIncome({
           <TriangleAlert className="text-tax" />
           <AlertTitle>Expenses exceed your income</AlertTitle>
           <AlertDescription>
-            There is no profit to tax and no khums this year, so there is nothing to
-            calculate. Lower your expenses or raise your income to continue.
+            There is no profit to tax this year, so there is nothing to calculate.
+            Lower your expenses or raise your income to continue.
           </AlertDescription>
         </Alert>
       ) : null}

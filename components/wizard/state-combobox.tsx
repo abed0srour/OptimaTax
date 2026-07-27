@@ -49,7 +49,7 @@ export function StateCombobox({
      */
     <Command className="flex max-h-[58svh] flex-col sm:max-h-88">
       <CommandInput placeholder="State or code — NY, Texas…" />
-      <CommandList className="max-h-none min-h-0 flex-1 overflow-y-auto overscroll-contain show-scrollbar">
+      <CommandList className="max-h-none min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-contain show-scrollbar">
         <CommandEmpty>No state found.</CommandEmpty>
         {states.map((state) => (
           <CommandItem

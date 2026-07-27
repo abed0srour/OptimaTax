@@ -145,6 +145,17 @@ html {
 }
 
 /*
+ * Radix locks scrolling by setting `overflow: hidden` on the body and flagging
+ * it with `data-scroll-locked`. That is not enough on its own: when the body is
+ * taller than the viewport the root element keeps a scrollport of its own, so
+ * the page still scrolls behind an open dialog. Lock the root off the same
+ * signal, so this covers every Radix overlay rather than one component.
+ */
+html:has(body[data-scroll-locked]) {
+  overflow: hidden;
+}
+
+/*
  * cmdk's list ships shadcn's `no-scrollbar`, which hides the bar through
  * `::-webkit-scrollbar` — and that beats `scrollbar-width` in Chromium. A long
  * list that gives no sign it scrolls reads as a list that cannot, so put the

@@ -4,12 +4,12 @@ import {
   ArrowLeft,
   Landmark,
   MapPin,
-  Moon,
   RotateCcw,
   TrendingDown,
   TriangleAlert,
 } from "lucide-react";
 import { BracketTable } from "@/components/results/bracket-table";
+import { KhumsCoverage } from "@/components/results/khums-coverage";
 import { Limitations } from "@/components/results/limitations";
 import { TaxChart } from "@/components/results/tax-chart";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -49,25 +49,7 @@ export function StepResults({
       <TaxChart comparison={comparison} />
 
       {khums.obligation > 0 ? (
-        <Card className="rounded-2xl shadow-sm ring-foreground/8 [--card-spacing:--spacing(5)]">
-          <CardContent className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-            <span className="flex items-center gap-2 text-sm font-medium">
-              <Moon className="size-4 shrink-0 text-give" />
-              Khums
-            </span>
-            <span className="text-sm text-muted-foreground">
-              <span className="tnum font-semibold text-give-ink">
-                {formatCurrency(khums.fulfilled)}
-              </span>{" "}
-              of {formatCurrency(khums.obligation)} covered
-              {khums.remaining > 0
-                ? ` · ${formatCurrency(khums.remaining)} outstanding`
-                : khums.surplus > 0
-                  ? ` · ${formatCurrency(khums.surplus)} extra`
-                  : " · fully met"}
-            </span>
-          </CardContent>
-        </Card>
+        <KhumsCoverage khums={khums} donation={donationEntered} />
       ) : null}
 
       {donationCarryforward > 0 ? (
@@ -155,25 +137,30 @@ function Verdict({ comparison }: { comparison: TaxComparison }) {
           {better ? <TrendingDown className="size-4 shrink-0 text-keep" /> : null}
           {better ? "Better option · with donation" : "Both options cost the same"}
         </p>
-        <p
-          className={cn(
-            "max-w-full text-4xl leading-none font-semibold tracking-tight wrap-break-word sm:text-5xl md:text-6xl",
-            better ? "text-keep-ink" : "text-foreground",
-          )}
-        >
-          {formatCurrency(taxSavings)}
-        </p>
-        <p className="max-w-prose text-[0.95rem] leading-relaxed text-foreground/80">
-          {better
-            ? `less tax by donating ${formatCurrency(
-                donationEntered,
-              )} to a 501(c)(3). The gift really costs you ${formatCurrency(
-                Math.max(0, netCostOfGiving),
-              )}.`
-            : donationEntered > 0
-              ? "The gift does not lower this bill — taxable income is already at or below zero, or your state grants no charitable deduction."
-              : "No donation entered, so there is nothing to compare yet."}
-        </p>
+
+        {better ? (
+          <>
+            <p className="text-[0.95rem] font-medium text-foreground/70">You saved</p>
+            <p className="max-w-full text-4xl leading-none font-semibold tracking-tight wrap-break-word text-keep-ink sm:text-5xl md:text-6xl">
+              {formatCurrency(taxSavings)}
+            </p>
+            <p className="max-w-prose text-[0.95rem] leading-relaxed text-foreground/80">
+              by donating {formatCurrency(donationEntered)} to a 501(c)(3). The gift
+              really costs you {formatCurrency(Math.max(0, netCostOfGiving))}.
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="max-w-full text-4xl leading-none font-semibold tracking-tight wrap-break-word sm:text-5xl md:text-6xl">
+              {formatCurrency(taxSavings)}
+            </p>
+            <p className="max-w-prose text-[0.95rem] leading-relaxed text-foreground/80">
+              {donationEntered > 0
+                ? "The gift does not lower this bill — taxable income is already at or below zero, or your state grants no charitable deduction."
+                : "No donation entered, so there is nothing to compare yet."}
+            </p>
+          </>
+        )}
       </CardContent>
     </Card>
   );

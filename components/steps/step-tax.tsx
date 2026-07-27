@@ -11,8 +11,9 @@ import type { ScenarioBreakdown, StateTaxEntry } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 /**
- * The bill as it stands, before any giving. Its job is to make the next step —
- * routing khums through a 501(c)(3) — feel like the obvious move.
+ * The bill as it stands, before any giving — and the offer to see what a
+ * 501(c)(3) donation would do to it. Giving is presented as one of two
+ * outcomes, never as the required next step.
  */
 export function StepTax({
   scenario,
@@ -75,6 +76,10 @@ export function StepTax({
        * bill obliges you to donate.
        */}
       <div className="space-y-2 pt-1">
+        <p className="text-center text-[0.85rem] leading-relaxed text-foreground/70">
+          See your total taxes if you donate
+        </p>
+
         <Button
           type="button"
           onClick={onDonate}

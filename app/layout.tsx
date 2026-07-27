@@ -15,7 +15,7 @@ const fontMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "OptimaTax — Tax Visualizer & Khums Optimizer",
   description:
-    "Answer four short questions and see how a 501(c)(3) donation legally lowers your US federal and state income tax — and how far it goes toward your khums.",
+    "A five-step calculator for US federal and state income tax: see what you owe, then see how a 501(c)(3) donation legally lowers the bill and how far it goes toward your khums.",
 };
 
 export default function RootLayout({
