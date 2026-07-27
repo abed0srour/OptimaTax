@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Image from "next/image";
+import logo from "@/public/logo.png";
 import { StepGiving } from "@/components/steps/step-giving";
 import { StepIncome } from "@/components/steps/step-income";
 import { StepPlace } from "@/components/steps/step-place";
@@ -143,9 +145,13 @@ function Header() {
     <header className="border-b border-border bg-card/70 backdrop-blur-sm">
       <div className="mx-auto flex w-full max-w-3xl flex-wrap items-center justify-between gap-3 px-4 py-3.5 sm:px-6">
         <div className="flex items-center gap-2.5">
-          <span className="flex size-8 items-center justify-center rounded-lg bg-primary text-xs font-bold text-primary-foreground">
-            OT
-          </span>
+          <Image
+            src={logo}
+            alt=""
+            width={36}
+            height={36}
+            className="size-9 shrink-0"
+          />
           <div className="leading-tight">
             <p className="text-sm font-semibold tracking-tight">OptimaTax</p>
             <p className="text-xs text-muted-foreground">
