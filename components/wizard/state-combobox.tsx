@@ -39,17 +39,19 @@ export function StateCombobox({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="h-12 w-full justify-between rounded-xl px-4 text-[0.95rem] font-medium"
+          className="h-12 w-full justify-between gap-2 rounded-xl px-4 text-[0.95rem] font-medium"
         >
           {selected ? (
-            <span className="flex items-center gap-2">
-              {selected.name}
-              <span className="text-xs font-normal text-muted-foreground">
+            <span className="flex min-w-0 items-center gap-2">
+              <span className="truncate">{selected.name}</span>
+              <span className="shrink-0 text-xs font-normal text-muted-foreground">
                 {selected.code}
               </span>
             </span>
           ) : (
-            <span className="text-muted-foreground">Search for your state…</span>
+            <span className="truncate text-muted-foreground">
+              Search for your state…
+            </span>
           )}
           <ChevronsUpDown className="size-4 shrink-0 opacity-50" />
         </Button>
@@ -60,7 +62,7 @@ export function StateCombobox({
         align="start"
       >
         <Command>
-          <CommandInput placeholder="Type a state or code — NY, Texas…" />
+          <CommandInput placeholder="State or code — NY, Texas…" />
           <CommandList>
             <CommandEmpty>No state found.</CommandEmpty>
             {states.map((state) => (
@@ -79,8 +81,10 @@ export function StateCombobox({
                     state.code === value ? "opacity-100" : "opacity-0",
                   )}
                 />
-                <span className="flex-1">{state.name}</span>
-                <span className="text-xs text-muted-foreground">{state.code}</span>
+                <span className="min-w-0 flex-1 truncate">{state.name}</span>
+                <span className="shrink-0 text-xs text-muted-foreground">
+                  {state.code}
+                </span>
               </CommandItem>
             ))}
           </CommandList>

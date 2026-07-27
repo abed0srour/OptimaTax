@@ -8,6 +8,7 @@ import { StepCard } from "@/components/wizard/step-card";
 import { ArrowLeft } from "lucide-react";
 import { formatCurrency } from "@/lib/format";
 import type { ScenarioBreakdown, StateTaxEntry } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 /**
  * The bill as it stands, before any giving. Its job is to make the next step —
@@ -30,12 +31,12 @@ export function StepTax({
       eyebrow="Step 3 of 5"
       title="This is what you owe"
       footer={
-        <CardFooter className="flex-wrap justify-between gap-3 bg-muted/40 px-4 py-3 sm:px-6">
+        <CardFooter className="flex-col-reverse gap-2 bg-muted/40 px-4 py-3 sm:flex-row sm:justify-between sm:gap-3 sm:px-6">
           <Button
             type="button"
             variant="ghost"
             onClick={onBack}
-            className="h-10 px-3 text-[0.9rem]"
+            className="h-10 w-full px-3 text-[0.9rem] sm:w-auto"
           >
             <ArrowLeft data-icon="inline-start" />
             Back
@@ -43,7 +44,7 @@ export function StepTax({
           <Button
             type="button"
             onClick={onDonate}
-            className="h-10 px-5 text-[0.9rem]"
+            className="h-10 w-full px-5 text-[0.9rem] sm:w-auto"
           >
             <HandHeart data-icon="inline-start" />
             Give to a 501(c)(3)
@@ -64,9 +65,11 @@ export function StepTax({
           value={scenario.state.tax}
           muted={stateEntry.tax_type === "none"}
         />
-        <div className="flex items-baseline justify-between gap-4 border-t border-border pt-3">
-          <dt className="text-[0.9rem] font-semibold">You keep after tax</dt>
-          <dd className="tnum text-lg font-semibold">
+        <div className="flex items-baseline justify-between gap-3 border-t border-border pt-3">
+          <dt className="min-w-0 text-[0.9rem] font-semibold">
+            Net income after tax
+          </dt>
+          <dd className="tnum shrink-0 text-lg font-semibold whitespace-nowrap">
             {formatCurrency(scenario.afterTaxIncome)}
           </dd>
         </div>
@@ -85,12 +88,13 @@ function Line({
   muted?: boolean;
 }) {
   return (
-    <div className="flex items-baseline justify-between gap-4">
-      <dt className="text-[0.9rem] text-foreground/80">{label}</dt>
+    <div className="flex items-baseline justify-between gap-3">
+      <dt className="min-w-0 text-[0.9rem] text-foreground/80">{label}</dt>
       <dd
-        className={
-          muted ? "tnum font-medium text-muted-foreground" : "tnum font-medium"
-        }
+        className={cn(
+          "tnum shrink-0 font-medium whitespace-nowrap",
+          muted && "text-muted-foreground",
+        )}
       >
         {muted ? "None" : formatCurrency(value)}
       </dd>

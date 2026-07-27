@@ -79,14 +79,18 @@ export function StepNav({
   extra?: ReactNode;
 }) {
   return (
-    <CardFooter className="flex-wrap justify-between gap-3 bg-muted/40 px-4 py-3 sm:px-6">
-      <div className="flex flex-wrap items-center gap-1">
+    /*
+     * Column-reverse on phones so the primary action sits on top and both
+     * buttons get a full-width thumb target; a single row from `sm` up.
+     */
+    <CardFooter className="flex-col-reverse gap-2 bg-muted/40 px-4 py-3 sm:flex-row sm:justify-between sm:gap-3 sm:px-6">
+      <div className="flex w-full items-center gap-1 sm:w-auto">
         {onBack ? (
           <Button
             type="button"
             variant="ghost"
             onClick={onBack}
-            className="h-10 px-3 text-[0.9rem]"
+            className="h-10 w-full px-3 text-[0.9rem] sm:w-auto"
           >
             <ArrowLeft data-icon="inline-start" />
             {backLabel}
@@ -100,7 +104,7 @@ export function StepNav({
           type="button"
           onClick={onNext}
           disabled={nextDisabled}
-          className="h-10 px-5 text-[0.9rem]"
+          className="h-10 w-full px-5 text-[0.9rem] sm:w-auto"
         >
           {nextLabel}
           <ArrowRight data-icon="inline-end" />

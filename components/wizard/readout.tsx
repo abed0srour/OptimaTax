@@ -54,9 +54,10 @@ export function Readout({
       >
         {label}
       </p>
+      {/* Steps down on narrow screens so seven-figure amounts still fit. */}
       <p
         className={cn(
-          "text-4xl leading-none font-semibold tracking-tight sm:text-5xl",
+          "max-w-full text-3xl leading-none font-semibold tracking-tight wrap-break-word sm:text-4xl md:text-5xl",
           valueClass[tone],
         )}
       >

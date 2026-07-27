@@ -29,8 +29,8 @@ export function Disclosure({
       )}
     >
       <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-colors hover:bg-muted/60 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none">
-        <span>{title}</span>
-        <span className="flex shrink-0 items-center gap-2 text-xs text-muted-foreground">
+        <span className="min-w-0">{title}</span>
+        <span className="flex shrink-0 items-center gap-2 text-xs whitespace-nowrap text-muted-foreground">
           {aside}
           <ChevronDown
             aria-hidden

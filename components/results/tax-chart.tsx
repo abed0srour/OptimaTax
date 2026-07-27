@@ -59,7 +59,7 @@ export function TaxChart({ comparison }: { comparison: TaxComparison }) {
           ))}
         </ul>
 
-        <div className="space-y-4 pr-16 sm:pr-20">
+        <div className="space-y-4">
           {rows.map((row) => {
             const { totalTax, federal, state } = row.scenario;
             const segments = [
@@ -69,30 +69,36 @@ export function TaxChart({ comparison }: { comparison: TaxComparison }) {
 
             return (
               <div key={row.key}>
-                <p className="mb-1.5 text-sm font-medium">{row.title}</p>
+                {/*
+                 * The total sits above the bar rather than at its tip: a
+                 * seven-figure label past a full-width bar would run into the
+                 * card's clipped edge, and stacking them keeps the two totals
+                 * aligned for comparison.
+                 */}
+                <div className="mb-1.5 flex items-baseline justify-between gap-3">
+                  <p className="min-w-0 text-sm font-medium">{row.title}</p>
+                  <p className="tnum shrink-0 text-sm font-semibold whitespace-nowrap">
+                    {formatCurrency(totalTax)}
+                  </p>
+                </div>
 
                 {totalTax > 0 ? (
-                  <div className="flex items-center gap-2">
-                    <div
-                      className="flex h-6 gap-0.5 transition-[width] duration-300 ease-out"
-                      style={{ width: `${(totalTax / scale) * 100}%` }}
-                    >
-                      {segments.map((segment, index) => (
-                        <div
-                          key={segment.key}
-                          className={cn(
-                            "h-full",
-                            segment.className,
-                            index === segments.length - 1 && "rounded-r-[4px]",
-                          )}
-                          style={{ flexGrow: segment.value }}
-                          title={`${segment.label}: ${formatCurrency(segment.value)}`}
-                        />
-                      ))}
-                    </div>
-                    <span className="tnum shrink-0 text-sm font-semibold whitespace-nowrap">
-                      {formatCurrency(totalTax)}
-                    </span>
+                  <div
+                    className="flex h-6 gap-0.5 transition-[width] duration-300 ease-out"
+                    style={{ width: `${(totalTax / scale) * 100}%` }}
+                  >
+                    {segments.map((segment, index) => (
+                      <div
+                        key={segment.key}
+                        className={cn(
+                          "h-full",
+                          segment.className,
+                          index === segments.length - 1 && "rounded-r-[4px]",
+                        )}
+                        style={{ flexGrow: segment.value }}
+                        title={`${segment.label}: ${formatCurrency(segment.value)}`}
+                      />
+                    ))}
                   </div>
                 ) : (
                   <p className="flex h-6 items-center text-sm text-muted-foreground">

@@ -31,18 +31,23 @@ export function Stepper({
 
   return (
     <nav aria-label="Progress">
-      {/* Compact on phones: a bar plus where you are. */}
-      <div className="sm:hidden">
+      {/*
+       * Below md the five labelled pills cannot fit on one line without
+       * wrapping mid-word, so phones and small tablets get a bar instead.
+       */}
+      <div className="md:hidden">
         <div className="mb-2 flex items-baseline justify-between gap-3">
-          <span className="text-sm font-medium">{steps[current].short}</span>
-          <span className="text-xs text-muted-foreground">
+          <span className="min-w-0 truncate text-sm font-medium">
+            {steps[current].short}
+          </span>
+          <span className="shrink-0 text-xs whitespace-nowrap text-muted-foreground">
             Step {current + 1} of {steps.length}
           </span>
         </div>
         <Progress value={((current + 1) / steps.length) * 100} className="h-1.5" />
       </div>
 
-      <ol className="hidden items-center sm:flex">
+      <ol className="hidden items-center md:flex">
         {steps.map((step, index) => {
           const done = index < current;
           const active = index === current;
@@ -59,7 +64,7 @@ export function Stepper({
                 disabled={!reachable}
                 aria-current={active ? "step" : undefined}
                 className={cn(
-                  "flex items-center gap-2.5 rounded-full py-1 pr-3 pl-1 transition-colors outline-none",
+                  "flex shrink-0 items-center gap-2 rounded-full py-1 pr-2.5 pl-1 transition-colors outline-none",
                   "focus-visible:ring-3 focus-visible:ring-ring/50",
                   reachable ? "cursor-pointer" : "cursor-default",
                   reachable && !active && "hover:bg-muted",
@@ -93,7 +98,7 @@ export function Stepper({
                 <span
                   aria-hidden
                   className={cn(
-                    "mx-3 h-px flex-1 transition-colors",
+                    "mx-2 h-px min-w-2 flex-1 transition-colors",
                     done ? "bg-primary/35" : "bg-border",
                   )}
                 />

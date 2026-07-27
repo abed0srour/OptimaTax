@@ -101,12 +101,12 @@ export function StepResults({
         <Limitations stateNote={stateEntry.note} />
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+      <div className="flex flex-col gap-2 pt-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
         <Button
           type="button"
           variant="ghost"
           onClick={onBack}
-          className="h-10 px-3 text-[0.9rem]"
+          className="h-10 w-full px-3 text-[0.9rem] sm:w-auto"
         >
           <ArrowLeft data-icon="inline-start" />
           Change my answers
@@ -115,7 +115,7 @@ export function StepResults({
           type="button"
           variant="outline"
           onClick={onRestart}
-          className="h-10 px-4 text-[0.9rem]"
+          className="h-10 w-full px-4 text-[0.9rem] sm:w-auto"
         >
           <RotateCcw data-icon="inline-start" />
           Start over
@@ -143,7 +143,7 @@ function Verdict({ comparison }: { comparison: TaxComparison }) {
         </p>
         <p
           className={cn(
-            "text-5xl leading-none font-semibold tracking-tight sm:text-6xl",
+            "max-w-full text-4xl leading-none font-semibold tracking-tight wrap-break-word sm:text-5xl md:text-6xl",
             better ? "text-keep-ink" : "text-foreground",
           )}
         >
