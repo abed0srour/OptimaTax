@@ -2,7 +2,22 @@
 
 A client-side US tax visualizer, legal donation optimizer, and Islamic *khums* integration calculator.
 
-Enter your income, expenses, and planned charitable gift, and OptimaTax shows two scenarios side by side — what you owe if you keep everything, and what you owe if you route your khums obligation through a 501(c)(3). Every figure recalculates as you type. No server, no API, no data leaves the browser.
+A four-step wizard asks where you file, what you earned, and what you plan to give, then shows two scenarios side by side — what you owe if you keep everything, and what you owe if you route your khums obligation through a 501(c)(3). No server, no API, no data leaves the browser.
+
+The interface is light-mode only and built on [shadcn/ui](https://ui.shadcn.com) (radix-nova preset) over Tailwind v4.
+
+---
+
+## The four steps
+
+| Step | Asks for | Shows immediately |
+| --- | --- | --- |
+| **1 · State & status** | State of residence, federal filing status | How that state taxes income; the standard deduction for each status |
+| **2 · Income** | Gross income, deductible expenses | Running net profit |
+| **3 · Giving** | Charitable donation, deduction model | Khums due, with a one-tap *Match my khums*, and a coverage bar |
+| **4 · Results** | — | Everything below |
+
+Steps already visited stay clickable in the progress bar, so any answer is one tap away.
 
 ---
 
@@ -20,7 +35,7 @@ Enter your income, expenses, and planned charitable gift, and OptimaTax shows tw
 
 ### Two deduction models
 
-The dashboard has a **Stacked / IRS itemization** toggle, because the two produce materially different numbers:
+Step 3 hides a **Stacked / IRS itemization** toggle behind *How the deduction stacks*, because the two produce materially different numbers:
 
 | Mode | Federal deduction | Notes |
 | --- | --- | --- |
@@ -56,16 +71,30 @@ Keep the source files in IRS convention. Values can then be pasted straight from
 ```
 ├── app/
 │   ├── layout.tsx            Root layout, fonts, metadata
-│   ├── page.tsx              The dashboard (client component)
-│   └── globals.css           Tailwind v4 entry + a few utilities
+│   ├── page.tsx              Wizard shell: state, step routing, header
+│   └── globals.css           Tailwind v4 entry, light-only theme tokens
 ├── components/
-│   ├── Card.tsx              Card shell, header, label/value row
-│   ├── Field.tsx             Select and currency inputs
-│   ├── StatTile.tsx          Headline stat tiles
-│   ├── ScenarioCard.tsx      One tax scenario, end to end
-│   ├── BracketTable.tsx      Chunk-by-chunk bracket audit trail
-│   ├── KhumsPanel.tsx        Khums obligation vs. donation tracker
-│   └── Optimization.tsx      Savings banner + allocation bars
+│   ├── ui/                   shadcn/ui primitives (generated — edit freely)
+│   ├── ui-extras/
+│   │   └── disclosure.tsx    <details> styled to match the cards
+│   ├── wizard/
+│   │   ├── stepper.tsx       Progress across the top; jump back to any step
+│   │   ├── step-card.tsx     Shared step frame + Back/Continue footer
+│   │   ├── money-field.tsx   Large currency input, formats as you type
+│   │   ├── choice-group.tsx  Radio group drawn as tappable cards
+│   │   └── readout.tsx       The running total a step builds toward
+│   ├── steps/
+│   │   ├── step-place.tsx    1 · State & filing status
+│   │   ├── step-income.tsx   2 · Income & expenses
+│   │   ├── step-giving.tsx   3 · Donation, khums match, deduction model
+│   │   └── step-results.tsx  4 · Composes everything below
+│   └── results/
+│       ├── summary.tsx       Headline saving + stat tiles
+│       ├── comparison.tsx    Both scenarios, line for line
+│       ├── bracket-table.tsx Chunk-by-chunk bracket audit trail
+│       ├── khums-summary.tsx Khums obligation vs. donation tracker
+│       ├── allocation.tsx    Where the net profit goes
+│       └── limitations.tsx   Scope and caveats
 ├── data/
 │   ├── federal_tax.json      Filing statuses, standard deductions, brackets
 │   └── state_tax.json        50 states + DC by tax_type: none | flat | graduated
@@ -78,7 +107,7 @@ Keep the source files in IRS convention. Values can then be pasted straight from
 
 ### Data file shape
 
-`federal_tax.json` nests each filing status under `ordinary_income_tax.filing_statuses`, and additionally carries long-term capital gains brackets, NIIT thresholds, Additional Medicare Tax thresholds, and the personal exemption. Only the ordinary-income section and the charitable ceiling are wired into the dashboard today; the rest is typed and loadable but unused.
+`federal_tax.json` nests each filing status under `ordinary_income_tax.filing_statuses`, and additionally carries long-term capital gains brackets, NIIT thresholds, Additional Medicare Tax thresholds, and the personal exemption. Only the ordinary-income section and the charitable ceiling are wired into the calculator today; the rest is typed and loadable but unused.
 
 `state_tax.json` is an object keyed by postal code, holding **single-filer schedules only**:
 
@@ -144,7 +173,7 @@ Tax saved: **$6,260**. Real cost of the $20,000 gift: **$13,740** — an effecti
 
 This is an educational estimator, not tax or religious advice.
 
-- **Ordinary income only.** No payroll or self-employment tax, AMT, QBI deduction, credits, or deduction phaseouts. The data file now carries long-term capital gains brackets, the 3.8% NIIT, and the 0.9% Additional Medicare Tax, but the dashboard does not apply them.
+- **Ordinary income only.** No payroll or self-employment tax, AMT, QBI deduction, credits, or deduction phaseouts. The data file now carries long-term capital gains brackets, the 3.8% NIIT, and the 0.9% Additional Medicare Tax, but the calculator does not apply them.
 - **State brackets are single-filer schedules, applied to every filing status.** The dataset carries no married-filing-jointly thresholds, which are wider in many states — joint filers will see state tax overstated.
 - **No state standard deductions or exemptions.** The dataset omits them, so state taxable income is the full net profit less any deductible gift. Real state bills will generally be lower.
 - **State income tax only.** City and county income taxes are excluded — NYC and Yonkers, Maryland counties, Ohio municipalities, Indiana counties, Pennsylvania local EIT.
