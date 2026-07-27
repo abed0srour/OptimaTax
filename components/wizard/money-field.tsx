@@ -16,7 +16,6 @@ export function MoneyField({
   value,
   onChange,
   placeholder = "0",
-  hint,
   action,
   tone = "default",
 }: {
@@ -24,7 +23,6 @@ export function MoneyField({
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
-  hint?: string;
   action?: { label: string; onClick: () => void; title?: string };
   tone?: "default" | "give";
 }) {
@@ -75,10 +73,6 @@ export function MoneyField({
           )}
         />
       </div>
-
-      {hint ? (
-        <p className="text-xs leading-relaxed text-muted-foreground">{hint}</p>
-      ) : null}
     </div>
   );
 }

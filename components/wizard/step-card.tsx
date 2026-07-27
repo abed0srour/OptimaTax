@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
@@ -14,14 +13,14 @@ import {
 import { cn } from "@/lib/utils";
 
 /**
- * The frame every step shares: an icon, the question being asked, one line of
- * plain-language context, and a footer that carries the Back / Continue pair.
+ * The frame every step shares: an icon, the question being asked, and a footer
+ * that carries the Back / Continue pair. The question is the only prose — the
+ * controls below it are meant to explain themselves.
  */
 export function StepCard({
   icon,
   eyebrow,
   title,
-  description,
   children,
   footer,
   className,
@@ -29,7 +28,6 @@ export function StepCard({
   icon: ReactNode;
   eyebrow: string;
   title: string;
-  description: string;
   children: ReactNode;
   footer?: ReactNode;
   className?: string;
@@ -55,9 +53,6 @@ export function StepCard({
             </CardTitle>
           </div>
         </div>
-        <CardDescription className="text-[0.9rem] leading-relaxed">
-          {description}
-        </CardDescription>
       </CardHeader>
 
       <CardContent className="space-y-6 pt-1">{children}</CardContent>
@@ -73,12 +68,14 @@ export function StepNav({
   onNext,
   nextLabel = "Continue",
   backLabel = "Back",
+  nextDisabled = false,
   extra,
 }: {
   onBack?: () => void;
   onNext?: () => void;
   nextLabel?: string;
   backLabel?: string;
+  nextDisabled?: boolean;
   extra?: ReactNode;
 }) {
   return (
@@ -102,6 +99,7 @@ export function StepNav({
         <Button
           type="button"
           onClick={onNext}
+          disabled={nextDisabled}
           className="h-10 px-5 text-[0.9rem]"
         >
           {nextLabel}

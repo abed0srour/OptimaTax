@@ -118,8 +118,14 @@
   --note-soft: oklch(0.968 0.03 85);
   --note-ink: oklch(0.47 0.09 70);
 
-  --chart-1: var(--keep);
-  --chart-2: var(--give);
+  /*
+   * Chart series. Two categorical slots — federal and state are identities, not
+   * magnitudes, so they get distinct hues rather than two steps of one ramp.
+   * Validated against the white card surface: adjacent CVD ΔE 24.7 (protan),
+   * normal-vision ΔE 33.6, both clear of the 8 / 15 floors, both over 3:1.
+   */
+  --chart-1: #2a78d6;
+  --chart-2: #eb6834;
   --chart-3: var(--tax);
   --chart-4: var(--note);
   --chart-5: oklch(0.6 0.02 250);

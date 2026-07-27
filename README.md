@@ -2,22 +2,25 @@
 
 A client-side US tax visualizer, legal donation optimizer, and Islamic *khums* integration calculator.
 
-A four-step wizard asks where you file, what you earned, and what you plan to give, then shows two scenarios side by side — what you owe if you keep everything, and what you owe if you route your khums obligation through a 501(c)(3). No server, no API, no data leaves the browser.
+A five-step wizard asks where you file and what you earned, shows you the bill, then offers to route your khums through a 501(c)(3) — and charts what that does to the bill. No server, no API, no data leaves the browser.
 
 The interface is light-mode only and built on [shadcn/ui](https://ui.shadcn.com) (radix-nova preset) over Tailwind v4.
 
 ---
 
-## The four steps
+## The five steps
 
-| Step | Asks for | Shows immediately |
+| Step | Asks for | Shows |
 | --- | --- | --- |
-| **1 · State & status** | State of residence, federal filing status | How that state taxes income; the standard deduction for each status |
-| **2 · Income** | Gross income, deductible expenses | Running net profit |
-| **3 · Giving** | Charitable donation, deduction model | Khums due, with a one-tap *Match my khums*, and a coverage bar |
-| **4 · Results** | — | Everything below |
+| **1 · State** | State of residence (type-ahead by name *or* code — "NY", "new y"), filing status | — |
+| **2 · Income** | Gross income, deductible expenses | Running net profit; *Calculate my tax* stays disabled until there is a profit |
+| **3 · Your tax** | — | The bill as it stands, split federal / state, and a *Give to a 501(c)(3)* button |
+| **4 · Giving** | Donation amount, deduction model | Khums due, a *Give exactly this* shortcut, and a live verdict on whether the amount covers it |
+| **5 · Results** | — | Which option is cheaper, the chart, and the detail below |
 
 Steps already visited stay clickable in the progress bar, so any answer is one tap away.
+
+The screens carry no explanatory prose — the controls and their live figures are the explanation. Detail that most people never need (bracket walkthroughs, the deduction model, scope caveats) sits behind collapsed disclosures.
 
 ---
 
@@ -31,11 +34,15 @@ Steps already visited stay clickable in the progress bar, so any answer is one t
 
 **Scenario B (donation `x`)** — the same, with the charitable gift deducted before tax. Both scenarios include a chunk-by-chunk bracket walkthrough, so you can see exactly which slice of income was taxed at which rate.
 
-**Optimization metrics** — the tax saved, the real out-of-pocket cost of the gift, and the effective discount the tax code applies to every donated dollar. A stacked bar shows how the same net profit splits between the government, the charity, and you under each scenario.
+**Optimization metrics** — the tax saved and the real out-of-pocket cost of the gift, with the winning option named outright on the results screen.
+
+### The chart
+
+Both scenarios sit on one shared scale as stacked horizontal bars, split federal / state. Two categorical series, so the pair was run through the data-viz validator against the white card surface: adjacent CVD ΔE 24.7 (protan) and normal-vision ΔE 33.6 clear the 8 / 15 floors, and both clear 3:1 contrast. The colors live as `--chart-1` / `--chart-2` in [app/globals.css](app/globals.css) — re-validate if you change them. A legend, direct totals at each bar tip, per-segment hover titles, and a *View as table* twin mean nothing is encoded by color alone.
 
 ### Two deduction models
 
-Step 3 hides a **Stacked / IRS itemization** toggle behind *How the deduction stacks*, because the two produce materially different numbers:
+Step 4 hides a **Stacked / IRS itemization** toggle behind *How the deduction stacks*, because the two produce materially different numbers:
 
 | Mode | Federal deduction | Notes |
 | --- | --- | --- |
@@ -78,23 +85,22 @@ Keep the source files in IRS convention. Values can then be pasted straight from
 │   ├── ui-extras/
 │   │   └── disclosure.tsx    <details> styled to match the cards
 │   ├── wizard/
-│   │   ├── stepper.tsx       Progress across the top; jump back to any step
-│   │   ├── step-card.tsx     Shared step frame + Back/Continue footer
-│   │   ├── money-field.tsx   Large currency input, formats as you type
-│   │   ├── choice-group.tsx  Radio group drawn as tappable cards
-│   │   └── readout.tsx       The running total a step builds toward
+│   │   ├── stepper.tsx        Progress across the top; jump back to any step
+│   │   ├── step-card.tsx      Shared step frame + Back/Continue footer
+│   │   ├── money-field.tsx    Large currency input, formats as you type
+│   │   ├── choice-group.tsx   Radio group drawn as tappable cards
+│   │   ├── state-combobox.tsx Type-ahead state picker (name or postal code)
+│   │   └── readout.tsx        The figure a step builds toward
 │   ├── steps/
-│   │   ├── step-place.tsx    1 · State & filing status
-│   │   ├── step-income.tsx   2 · Income & expenses
-│   │   ├── step-giving.tsx   3 · Donation, khums match, deduction model
-│   │   └── step-results.tsx  4 · Composes everything below
+│   │   ├── step-place.tsx     1 · State & filing status
+│   │   ├── step-income.tsx    2 · Income & expenses
+│   │   ├── step-tax.tsx       3 · The bill, and the call to give
+│   │   ├── step-giving.tsx    4 · Donation + khums coverage verdict
+│   │   └── step-results.tsx   5 · Verdict, chart, and the detail below
 │   └── results/
-│       ├── summary.tsx       Headline saving + stat tiles
-│       ├── comparison.tsx    Both scenarios, line for line
-│       ├── bracket-table.tsx Chunk-by-chunk bracket audit trail
-│       ├── khums-summary.tsx Khums obligation vs. donation tracker
-│       ├── allocation.tsx    Where the net profit goes
-│       └── limitations.tsx   Scope and caveats
+│       ├── tax-chart.tsx      Both cases on one scale + table view
+│       ├── bracket-table.tsx  Chunk-by-chunk bracket audit trail
+│       └── limitations.tsx    Scope and caveats
 ├── data/
 │   ├── federal_tax.json      Filing statuses, standard deductions, brackets
 │   └── state_tax.json        50 states + DC by tax_type: none | flat | graduated

@@ -1,6 +1,6 @@
 "use client";
 
-import { HandHeart } from "lucide-react";
+import { Check, HandHeart, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Disclosure } from "@/components/ui-extras/disclosure";
@@ -8,9 +8,9 @@ import { ChoiceGroup } from "@/components/wizard/choice-group";
 import { MoneyField } from "@/components/wizard/money-field";
 import { Readout } from "@/components/wizard/readout";
 import { StepCard, StepNav } from "@/components/wizard/step-card";
-import { formatCurrency, formatPercent, toMoneyInput } from "@/lib/format";
-import { KHUMS_RATE } from "@/lib/tax";
+import { formatCurrency, toMoneyInput } from "@/lib/format";
 import type { DeductionMode, KhumsBreakdown } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 export const DEDUCTION_MODES: {
   value: DeductionMode;
@@ -35,7 +35,6 @@ export function StepGiving({
   donationText,
   deductionMode,
   khums,
-  netProfit,
   onDonationChange,
   onDeductionModeChange,
   onBack,
@@ -44,32 +43,26 @@ export function StepGiving({
   donationText: string;
   deductionMode: DeductionMode;
   khums: KhumsBreakdown;
-  netProfit: number;
   onDonationChange: (value: string) => void;
   onDeductionModeChange: (mode: DeductionMode) => void;
   onBack: () => void;
   onNext: () => void;
 }) {
   const coverage = Math.round(khums.coverage * 100);
+  const covered = khums.remaining <= 0 && khums.obligation > 0;
 
   return (
     <StepCard
       icon={<HandHeart />}
-      eyebrow="Step 3 of 4"
-      title="How much are you giving?"
-      description="Khums is one fifth of the year's surplus. Route it through a 501(c)(3) and the same money also becomes a charitable deduction."
+      eyebrow="Step 4 of 5"
+      title="How much will you give?"
       footer={
         <StepNav onBack={onBack} onNext={onNext} nextLabel="See my results" />
       }
     >
       <Readout
-        label={`Khums due this year (${formatPercent(KHUMS_RATE, 0)} of net profit)`}
+        label="Your khums this year"
         value={formatCurrency(khums.obligation)}
-        hint={
-          netProfit > 0
-            ? "One fifth of the surplus left after the year's expenses."
-            : "No surplus this year, so no khums is calculated."
-        }
         tone="give"
         action={
           khums.obligation > 0 ? (
@@ -77,50 +70,71 @@ export function StepGiving({
               type="button"
               variant="outline"
               onClick={() => onDonationChange(toMoneyInput(khums.obligation))}
-              className="h-8 shrink-0 text-xs font-semibold"
+              className="h-9 bg-card px-4 text-[0.85rem] font-semibold"
             >
-              Use this
+              Give exactly this
             </Button>
           ) : undefined
         }
       />
 
       <MoneyField
-        label="Charitable donation to a 501(c)(3)"
+        label="Donation to a 501(c)(3)"
         value={donationText}
         onChange={onDonationChange}
-        placeholder="0"
         tone="give"
-        hint="All or part of this can count toward your khums. Leave it at 0 to see the untouched tax bill."
-        action={
-          khums.obligation > 0
-            ? {
-                label: "Match my khums",
-                title: `Set the donation to ${formatCurrency(khums.obligation)}`,
-                onClick: () => onDonationChange(toMoneyInput(khums.obligation)),
-              }
-            : undefined
-        }
       />
 
       {khums.obligation > 0 ? (
-        <div className="space-y-2">
-          <div className="flex items-baseline justify-between gap-3 text-sm">
-            <span className="font-medium">Khums covered</span>
-            <span className="tnum text-muted-foreground">
-              {formatCurrency(khums.fulfilled)} of {formatCurrency(khums.obligation)}
-              <span className="ml-2 font-semibold text-give-ink">{coverage}%</span>
+        <div
+          className={cn(
+            "space-y-3 rounded-xl border px-4 py-3.5",
+            covered ? "border-keep/30 bg-keep-soft" : "border-note/35 bg-note-soft",
+          )}
+        >
+          <div className="flex items-start gap-2.5">
+            <span
+              className={cn(
+                "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full",
+                covered ? "bg-keep text-white" : "bg-note text-white",
+              )}
+            >
+              {covered ? (
+                <Check className="size-3" strokeWidth={3.5} />
+              ) : (
+                <TriangleAlert className="size-3" strokeWidth={2.5} />
+              )}
             </span>
+            <p
+              className={cn(
+                "text-[0.85rem] leading-relaxed font-medium",
+                covered ? "text-keep-ink" : "text-note-ink",
+              )}
+            >
+              {verdict(khums)}
+            </p>
           </div>
+
           <Progress
             value={coverage}
-            className="h-2 **:data-[slot=progress-indicator]:bg-give"
+            aria-label="Share of the khums obligation covered"
+            className={cn(
+              "h-2",
+              covered
+                ? "**:data-[slot=progress-indicator]:bg-keep"
+                : "**:data-[slot=progress-indicator]:bg-note",
+            )}
           />
-          {khums.surplus > 0 ? (
-            <p className="text-xs text-muted-foreground">
-              {formatCurrency(khums.surplus)} beyond the obligation counts as voluntary
-              sadaqah — still deductible, subject to the federal AGI ceiling.
-            </p>
+
+          {!covered && khums.remaining > 0 ? (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onDonationChange(toMoneyInput(khums.obligation))}
+              className="h-8 bg-card text-xs font-semibold"
+            >
+              Top up to {formatCurrency(khums.obligation)}
+            </Button>
           ) : null}
         </div>
       ) : null}
@@ -139,4 +153,21 @@ export function StepGiving({
       </Disclosure>
     </StepCard>
   );
+}
+
+function verdict(khums: KhumsBreakdown): string {
+  if (khums.fulfilled <= 0) {
+    return `Nothing given yet — ${formatCurrency(khums.obligation)} of khums is still due.`;
+  }
+  if (khums.remaining > 0) {
+    return `This covers ${formatCurrency(khums.fulfilled)} of your khums. ${formatCurrency(
+      khums.remaining,
+    )} is still outstanding.`;
+  }
+  if (khums.surplus > 0) {
+    return `Your khums is fully covered, with ${formatCurrency(
+      khums.surplus,
+    )} given beyond it as sadaqah.`;
+  }
+  return "This covers your khums exactly.";
 }

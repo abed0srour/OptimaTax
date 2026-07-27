@@ -5,9 +5,9 @@ import { cn } from "@/lib/utils";
 
 const toneClass = {
   default: "border-border bg-muted/50",
-  keep: "border-keep/25 bg-keep-soft",
-  give: "border-give/25 bg-give-soft",
-  tax: "border-tax/25 bg-tax-soft",
+  keep: "border-keep/30 bg-keep-soft",
+  give: "border-give/30 bg-give-soft",
+  tax: "border-tax/30 bg-tax-soft",
 } as const;
 
 const valueClass = {
@@ -17,47 +17,52 @@ const valueClass = {
   tax: "text-tax-ink",
 } as const;
 
+const labelClass = {
+  default: "text-muted-foreground",
+  keep: "text-keep-ink/70",
+  give: "text-give-ink/70",
+  tax: "text-tax-ink/70",
+} as const;
+
 /**
- * The running total a step is building toward, shown under its inputs so the
- * effect of a change is visible without moving on.
+ * The figure a step is building toward. Centred and oversized, because on these
+ * screens it is the answer rather than a footnote.
  */
 export function Readout({
   label,
   value,
-  hint,
   tone = "default",
   action,
 }: {
   label: string;
   value: string;
-  hint?: string;
   tone?: keyof typeof toneClass;
   action?: ReactNode;
 }) {
   return (
     <div
       className={cn(
-        "flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-xl border px-4 py-3.5",
+        "flex flex-col items-center gap-3 rounded-2xl border px-5 py-6 text-center",
         toneClass[tone],
       )}
     >
-      <div className="min-w-0">
-        <p className="text-[0.8rem] font-medium text-muted-foreground">{label}</p>
-        {hint ? (
-          <p className="mt-0.5 text-xs leading-snug text-muted-foreground/80">{hint}</p>
-        ) : null}
-      </div>
-      <div className="flex items-center gap-3">
-        <p
-          className={cn(
-            "tnum text-2xl font-semibold tracking-tight",
-            valueClass[tone],
-          )}
-        >
-          {value}
-        </p>
-        {action}
-      </div>
+      <p
+        className={cn(
+          "text-xs font-semibold tracking-wider uppercase",
+          labelClass[tone],
+        )}
+      >
+        {label}
+      </p>
+      <p
+        className={cn(
+          "text-4xl leading-none font-semibold tracking-tight sm:text-5xl",
+          valueClass[tone],
+        )}
+      >
+        {value}
+      </p>
+      {action}
     </div>
   );
 }

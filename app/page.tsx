@@ -7,6 +7,7 @@ import { StepGiving } from "@/components/steps/step-giving";
 import { StepIncome } from "@/components/steps/step-income";
 import { StepPlace } from "@/components/steps/step-place";
 import { StepResults } from "@/components/steps/step-results";
+import { StepTax } from "@/components/steps/step-tax";
 import { Stepper, type StepMeta } from "@/components/wizard/stepper";
 import { parseMoney } from "@/lib/format";
 import { buildComparison } from "@/lib/tax";
@@ -14,17 +15,18 @@ import { states, taxYear } from "@/lib/taxData";
 import type { DeductionMode, FilingStatus } from "@/lib/types";
 
 const STEPS: StepMeta[] = [
-  { id: "place", short: "State & status", title: "Where do you file?" },
+  { id: "place", short: "State", title: "Where do you file?" },
   { id: "income", short: "Income", title: "What did you earn?" },
-  { id: "giving", short: "Giving", title: "How much are you giving?" },
+  { id: "tax", short: "Your tax", title: "This is what you owe" },
+  { id: "giving", short: "Giving", title: "How much will you give?" },
   { id: "results", short: "Results", title: "Your results" },
 ];
 
 const DEFAULTS = {
   stateCode: "CA",
   filingStatus: "single" as FilingStatus,
-  incomeText: "120,000",
-  expensesText: "20,000",
+  incomeText: "",
+  expensesText: "",
   donationText: "",
   deductionMode: "stacked" as DeductionMode,
 };
@@ -96,7 +98,6 @@ export default function Home() {
           <StepPlace
             stateCode={stateCode}
             filingStatus={filingStatus}
-            stateEntry={comparison.stateEntry}
             onStateChange={setStateCode}
             onFilingStatusChange={setFilingStatus}
             onNext={() => goTo(1)}
@@ -116,22 +117,30 @@ export default function Home() {
         ) : null}
 
         {step === 2 ? (
-          <StepGiving
-            donationText={donationText}
-            deductionMode={deductionMode}
-            khums={comparison.khums}
-            netProfit={comparison.netProfit}
-            onDonationChange={setDonationText}
-            onDeductionModeChange={setDeductionMode}
+          <StepTax
+            scenario={comparison.scenarioA}
+            stateEntry={comparison.stateEntry}
             onBack={() => goTo(1)}
-            onNext={() => goTo(3)}
+            onDonate={() => goTo(3)}
           />
         ) : null}
 
         {step === 3 ? (
+          <StepGiving
+            donationText={donationText}
+            deductionMode={deductionMode}
+            khums={comparison.khums}
+            onDonationChange={setDonationText}
+            onDeductionModeChange={setDeductionMode}
+            onBack={() => goTo(2)}
+            onNext={() => goTo(4)}
+          />
+        ) : null}
+
+        {step === 4 ? (
           <StepResults
             comparison={comparison}
-            onBack={() => goTo(2)}
+            onBack={() => goTo(3)}
             onRestart={restart}
           />
         ) : null}
@@ -155,7 +164,7 @@ function Header() {
           <div className="leading-tight">
             <p className="text-sm font-semibold tracking-tight">OptimaTax</p>
             <p className="text-xs text-muted-foreground">
-              Tax, giving, and khums in four steps
+              Tax, giving, and khums — step by step
             </p>
           </div>
         </div>
