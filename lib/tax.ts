@@ -1,0 +1,245 @@
+import {
+  federalStandardDeduction,
+  federalTax,
+  getState,
+  resolveByStatus,
+  stateStandardDeduction,
+} from "./taxData";
+import type {
+  Bracket,
+  BracketSlice,
+  CalculatorInput,
+  DeductionMode,
+  FilingStatus,
+  KhumsBreakdown,
+  ProgressiveResult,
+  ScenarioBreakdown,
+  StateTaxEntry,
+  TaxComparison,
+} from "./types";
+
+/** Khums is one fifth of the net surplus remaining after the year's expenses. */
+export const KHUMS_RATE = 0.2;
+
+const EMPTY_RESULT: ProgressiveResult = {
+  tax: 0,
+  slices: [],
+  effectiveRate: 0,
+  marginalRate: 0,
+};
+
+const clampToZero = (n: number) => (Number.isFinite(n) && n > 0 ? n : 0);
+
+/**
+ * Walks a progressive schedule chunk by chunk, taxing only the slice of income
+ * that falls inside each bracket. Returns the per-bracket audit trail alongside
+ * the total so the UI can show its work.
+ */
+export function calculateProgressiveTax(
+  taxableIncome: number,
+  brackets: Bracket[],
+): ProgressiveResult {
+  const income = clampToZero(taxableIncome);
+  if (!brackets.length) return EMPTY_RESULT;
+
+  const slices: BracketSlice[] = [];
+  let tax = 0;
+
+  for (const bracket of brackets) {
+    if (income <= bracket.min) break;
+
+    const ceiling = bracket.max ?? Infinity;
+    const amountInBracket = Math.min(income, ceiling) - bracket.min;
+    if (amountInBracket <= 0) continue;
+
+    const bracketTax = amountInBracket * bracket.rate;
+    tax += bracketTax;
+    slices.push({
+      rate: bracket.rate,
+      min: bracket.min,
+      max: bracket.max,
+      amountInBracket,
+      tax: bracketTax,
+    });
+  }
+
+  const topSlice = slices[slices.length - 1];
+  return {
+    tax,
+    slices,
+    effectiveRate: income > 0 ? tax / income : 0,
+    marginalRate: topSlice?.rate ?? brackets[0].rate,
+  };
+}
+
+/** Federal ordinary income tax for a filing status, from `data/federal_tax.json`. */
+export function calculateFederalTax(
+  taxableIncome: number,
+  status: FilingStatus,
+): ProgressiveResult {
+  return calculateProgressiveTax(taxableIncome, federalTax.brackets[status]);
+}
+
+/**
+ * State income tax, dispatched on the state's `tax_type`:
+ * `none` → $0, `flat` → single-rate, `graduated` → progressive loop.
+ */
+export function calculateStateTax(
+  taxableIncome: number,
+  state: StateTaxEntry,
+  status: FilingStatus,
+): ProgressiveResult {
+  switch (state.tax_type) {
+    case "none":
+      return EMPTY_RESULT;
+
+    case "flat": {
+      const rate = state.rate ?? 0;
+      // Modelled as a one-bracket schedule so flat and graduated states share
+      // the same result shape and the same breakdown UI.
+      return calculateProgressiveTax(taxableIncome, [
+        { rate, min: 0, max: null },
+      ]);
+    }
+
+    case "graduated": {
+      const brackets = resolveByStatus<Bracket[]>(state.brackets, status, []);
+      return calculateProgressiveTax(taxableIncome, brackets);
+    }
+
+    default:
+      return EMPTY_RESULT;
+  }
+}
+
+/** Net profit / net savings — the pool both the tax and the khums sit on top of. */
+export function calculateNetProfit(totalIncome: number, expenses: number): number {
+  return clampToZero(clampToZero(totalIncome) - clampToZero(expenses));
+}
+
+/** 1/5 of net profit, and how far the donation goes toward covering it. */
+export function calculateKhums(netProfit: number, donation: number): KhumsBreakdown {
+  const obligation = clampToZero(netProfit) * KHUMS_RATE;
+  const given = clampToZero(donation);
+  const fulfilled = Math.min(given, obligation);
+
+  return {
+    obligation,
+    fulfilled,
+    remaining: Math.max(0, obligation - given),
+    surplus: Math.max(0, given - obligation),
+    coverage: obligation > 0 ? Math.min(1, given / obligation) : given > 0 ? 1 : 0,
+  };
+}
+
+/**
+ * The deduction actually taken, given how the charitable gift stacks against
+ * the standard deduction.
+ *
+ * `stacked`  — standard deduction *plus* the gift (the model the brief specifies).
+ * `itemized` — the IRS rule: the greater of the standard deduction or the
+ *              itemized total, which here is the charitable gift alone.
+ */
+function totalDeduction(
+  standardDeduction: number,
+  donation: number,
+  mode: DeductionMode,
+): number {
+  return mode === "stacked"
+    ? standardDeduction + donation
+    : Math.max(standardDeduction, donation);
+}
+
+function buildScenario(
+  label: string,
+  netProfit: number,
+  donation: number,
+  status: FilingStatus,
+  state: StateTaxEntry,
+  mode: DeductionMode,
+): ScenarioBreakdown {
+  const fedStandard = federalStandardDeduction(status);
+  const stateStandard = stateStandardDeduction(state, status);
+  const stateDonation = state.allows_charitable_deduction === false ? 0 : donation;
+
+  const federalTaxableIncome = clampToZero(
+    netProfit - totalDeduction(fedStandard, donation, mode),
+  );
+  const stateTaxableIncome = clampToZero(
+    netProfit - totalDeduction(stateStandard, stateDonation, mode),
+  );
+
+  const federal = calculateFederalTax(federalTaxableIncome, status);
+  const stateResult = calculateStateTax(stateTaxableIncome, state, status);
+  const totalTax = federal.tax + stateResult.tax;
+  const afterTaxIncome = netProfit - totalTax;
+
+  return {
+    label,
+    donationApplied: donation,
+    federalTaxableIncome,
+    stateTaxableIncome,
+    federal,
+    state: stateResult,
+    totalTax,
+    afterTaxIncome,
+    retainedAfterGiving: afterTaxIncome - donation,
+  };
+}
+
+/**
+ * The whole engine in one call: net profit, khums, both scenarios, and the
+ * optimization metrics that compare them. Pure — safe to run on every keystroke.
+ */
+export function buildComparison(input: CalculatorInput): TaxComparison {
+  const { totalIncome, expenses, filingStatus, stateCode, deductionMode } = input;
+
+  const state = getState(stateCode);
+  const netProfit = calculateNetProfit(totalIncome, expenses);
+  const donationEntered = clampToZero(input.donation);
+
+  // IRC 170(b)(1)(A): cash gifts to public charities are deductible only up to
+  // 60% of AGI. Anything above that carries forward for up to five years.
+  const agiLimitAmount =
+    netProfit * federalTax.charitable_deduction_limits.cash_public_charity_agi_limit;
+  const deductibleDonation = Math.min(donationEntered, agiLimitAmount);
+
+  const scenarioA = buildScenario(
+    "Without donation",
+    netProfit,
+    0,
+    filingStatus,
+    state,
+    deductionMode,
+  );
+  const scenarioB = buildScenario(
+    "With donation",
+    netProfit,
+    deductibleDonation,
+    filingStatus,
+    state,
+    deductionMode,
+  );
+
+  // Scenario B keeps the *entered* donation out of pocket even though only the
+  // deductible slice reduces tax, so restate what the giver actually retains.
+  scenarioB.retainedAfterGiving = scenarioB.afterTaxIncome - donationEntered;
+
+  const taxSavings = scenarioA.totalTax - scenarioB.totalTax;
+
+  return {
+    netProfit,
+    donationEntered,
+    deductibleDonation,
+    donationCarryforward: donationEntered - deductibleDonation,
+    agiLimitAmount,
+    khums: calculateKhums(netProfit, donationEntered),
+    scenarioA,
+    scenarioB,
+    taxSavings,
+    netCostOfGiving: donationEntered - taxSavings,
+    givingDiscount: donationEntered > 0 ? taxSavings / donationEntered : 0,
+    stateAllowsCharitableDeduction: state.allows_charitable_deduction !== false,
+    stateEntry: state,
+  };
+}

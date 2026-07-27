@@ -1,0 +1,838 @@
+{
+  "tax_year": 2025,
+  "source_note": "State individual income tax schedules for tax year 2025 (Tax Foundation / state revenue department publications). Local/city income taxes, personal exemptions, tax credits, and standard-deduction phaseouts are NOT modeled. Where a lookup key is absent from `brackets` or `standard_deduction`, the `default` entry applies.",
+  "lookup_rules": {
+    "brackets": "brackets[filing_status] ?? brackets.default",
+    "standard_deduction": "standard_deduction[filing_status] ?? standard_deduction.default",
+    "bracket_max_null": "A null `max` means the bracket is open-ended (top bracket).",
+    "allows_charitable_deduction": "Absent means true. When false, the state grants no deduction for charitable gifts, so a donation produces no state-level tax saving."
+  },
+  "states": [
+    {
+      "code": "AL",
+      "name": "Alabama",
+      "tax_type": "graduated",
+      "standard_deduction": { "single": 3000, "married_joint": 8500, "head_of_household": 5200, "married_separate": 4250 },
+      "brackets": {
+        "default": [
+          { "rate": 0.02, "min": 0, "max": 500 },
+          { "rate": 0.04, "min": 500, "max": 3000 },
+          { "rate": 0.05, "min": 3000, "max": null }
+        ],
+        "married_joint": [
+          { "rate": 0.02, "min": 0, "max": 1000 },
+          { "rate": 0.04, "min": 1000, "max": 6000 },
+          { "rate": 0.05, "min": 6000, "max": null }
+        ]
+      }
+    },
+    {
+      "code": "AK",
+      "name": "Alaska",
+      "tax_type": "none",
+      "standard_deduction": { "default": 0 },
+      "note": "No state individual income tax."
+    },
+    {
+      "code": "AZ",
+      "name": "Arizona",
+      "tax_type": "flat",
+      "rate": 0.025,
+      "standard_deduction": { "single": 15750, "married_joint": 31500, "head_of_household": 23625, "married_separate": 15750 }
+    },
+    {
+      "code": "AR",
+      "name": "Arkansas",
+      "tax_type": "graduated",
+      "standard_deduction": { "single": 2410, "married_joint": 4820, "head_of_household": 2410, "married_separate": 2410 },
+      "brackets": {
+        "default": [
+          { "rate": 0.0, "min": 0, "max": 5500 },
+          { "rate": 0.02, "min": 5500, "max": 10900 },
+          { "rate": 0.03, "min": 10900, "max": 15600 },
+          { "rate": 0.034, "min": 15600, "max": 25700 },
+          { "rate": 0.039, "min": 25700, "max": null }
+        ]
+      }
+    },
+    {
+      "code": "CA",
+      "name": "California",
+      "tax_type": "graduated",
+      "standard_deduction": { "single": 5540, "married_joint": 11080, "head_of_household": 11080, "married_separate": 5540 },
+      "brackets": {
+        "default": [
+          { "rate": 0.01, "min": 0, "max": 10756 },
+          { "rate": 0.02, "min": 10756, "max": 25499 },
+          { "rate": 0.04, "min": 25499, "max": 40245 },
+          { "rate": 0.06, "min": 40245, "max": 55866 },
+          { "rate": 0.08, "min": 55866, "max": 70606 },
+          { "rate": 0.093, "min": 70606, "max": 360659 },
+          { "rate": 0.103, "min": 360659, "max": 432787 },
+          { "rate": 0.113, "min": 432787, "max": 721314 },
+          { "rate": 0.123, "min": 721314, "max": 1000000 },
+          { "rate": 0.133, "min": 1000000, "max": null }
+        ],
+        "married_joint": [
+          { "rate": 0.01, "min": 0, "max": 21512 },
+          { "rate": 0.02, "min": 21512, "max": 50998 },
+          { "rate": 0.04, "min": 50998, "max": 80490 },
+          { "rate": 0.06, "min": 80490, "max": 111732 },
+          { "rate": 0.08, "min": 111732, "max": 141212 },
+          { "rate": 0.093, "min": 141212, "max": 721318 },
+          { "rate": 0.103, "min": 721318, "max": 865574 },
+          { "rate": 0.113, "min": 865574, "max": 1000000 },
+          { "rate": 0.123, "min": 1000000, "max": 1442628 },
+          { "rate": 0.133, "min": 1442628, "max": null }
+        ],
+        "head_of_household": [
+          { "rate": 0.01, "min": 0, "max": 21527 },
+          { "rate": 0.02, "min": 21527, "max": 51000 },
+          { "rate": 0.04, "min": 51000, "max": 65744 },
+          { "rate": 0.06, "min": 65744, "max": 81364 },
+          { "rate": 0.08, "min": 81364, "max": 96107 },
+          { "rate": 0.093, "min": 96107, "max": 490493 },
+          { "rate": 0.103, "min": 490493, "max": 588593 },
+          { "rate": 0.113, "min": 588593, "max": 980987 },
+          { "rate": 0.123, "min": 980987, "max": 1000000 },
+          { "rate": 0.133, "min": 1000000, "max": null }
+        ]
+      },
+      "note": "Top bracket includes the 1% Mental Health Services Tax on income over $1,000,000."
+    },
+    {
+      "code": "CO",
+      "name": "Colorado",
+      "tax_type": "flat",
+      "rate": 0.044,
+      "standard_deduction": { "single": 15750, "married_joint": 31500, "head_of_household": 23625, "married_separate": 15750 }
+    },
+    {
+      "code": "CT",
+      "name": "Connecticut",
+      "tax_type": "graduated",
+      "allows_charitable_deduction": false,
+      "standard_deduction": { "default": 0 },
+      "brackets": {
+        "default": [
+          { "rate": 0.02, "min": 0, "max": 10000 },
+          { "rate": 0.045, "min": 10000, "max": 50000 },
+          { "rate": 0.055, "min": 50000, "max": 100000 },
+          { "rate": 0.06, "min": 100000, "max": 200000 },
+          { "rate": 0.065, "min": 200000, "max": 250000 },
+          { "rate": 0.069, "min": 250000, "max": 500000 },
+          { "rate": 0.0699, "min": 500000, "max": null }
+        ],
+        "married_joint": [
+          { "rate": 0.02, "min": 0, "max": 20000 },
+          { "rate": 0.045, "min": 20000, "max": 100000 },
+          { "rate": 0.055, "min": 100000, "max": 200000 },
+          { "rate": 0.06, "min": 200000, "max": 400000 },
+          { "rate": 0.065, "min": 400000, "max": 500000 },
+          { "rate": 0.069, "min": 500000, "max": 1000000 },
+          { "rate": 0.0699, "min": 1000000, "max": null }
+        ],
+        "head_of_household": [
+          { "rate": 0.02, "min": 0, "max": 16000 },
+          { "rate": 0.045, "min": 16000, "max": 80000 },
+          { "rate": 0.055, "min": 80000, "max": 160000 },
+          { "rate": 0.06, "min": 160000, "max": 320000 },
+          { "rate": 0.065, "min": 320000, "max": 400000 },
+          { "rate": 0.069, "min": 400000, "max": 800000 },
+          { "rate": 0.0699, "min": 800000, "max": null }
+        ]
+      },
+      "note": "Connecticut allows no standard deduction; it uses personal exemptions and credits that are not modeled here."
+    },
+    {
+      "code": "DE",
+      "name": "Delaware",
+      "tax_type": "graduated",
+      "standard_deduction": { "single": 3250, "married_joint": 6500, "head_of_household": 3250, "married_separate": 3250 },
+      "brackets": {
+        "default": [
+          { "rate": 0.0, "min": 0, "max": 2000 },
+          { "rate": 0.022, "min": 2000, "max": 5000 },
+          { "rate": 0.039, "min": 5000, "max": 10000 },
+          { "rate": 0.048, "min": 10000, "max": 20000 },
+          { "rate": 0.052, "min": 20000, "max": 25000 },
+          { "rate": 0.0555, "min": 25000, "max": 60000 },
+          { "rate": 0.066, "min": 60000, "max": null }
+        ]
+      }
+    },
+    {
+      "code": "DC",
+      "name": "District of Columbia",
+      "tax_type": "graduated",
+      "standard_deduction": { "single": 15750, "married_joint": 31500, "head_of_household": 23625, "married_separate": 15750 },
+      "brackets": {
+        "default": [
+          { "rate": 0.04, "min": 0, "max": 10000 },
+          { "rate": 0.06, "min": 10000, "max": 40000 },
+          { "rate": 0.065, "min": 40000, "max": 60000 },
+          { "rate": 0.085, "min": 60000, "max": 250000 },
+          { "rate": 0.0925, "min": 250000, "max": 500000 },
+          { "rate": 0.0975, "min": 500000, "max": 1000000 },
+          { "rate": 0.1075, "min": 1000000, "max": null }
+        ]
+      }
+    },
+    {
+      "code": "FL",
+      "name": "Florida",
+      "tax_type": "none",
+      "standard_deduction": { "default": 0 },
+      "note": "No state individual income tax."
+    },
+    {
+      "code": "GA",
+      "name": "Georgia",
+      "tax_type": "flat",
+      "rate": 0.0519,
+      "standard_deduction": { "single": 12000, "married_joint": 24000, "head_of_household": 12000, "married_separate": 12000 }
+    },
+    {
+      "code": "HI",
+      "name": "Hawaii",
+      "tax_type": "graduated",
+      "standard_deduction": { "single": 4400, "married_joint": 8800, "head_of_household": 6424, "married_separate": 4400 },
+      "brackets": {
+        "default": [
+          { "rate": 0.014, "min": 0, "max": 9600 },
+          { "rate": 0.032, "min": 9600, "max": 14400 },
+          { "rate": 0.055, "min": 14400, "max": 19200 },
+          { "rate": 0.064, "min": 19200, "max": 24000 },
+          { "rate": 0.068, "min": 24000, "max": 36000 },
+          { "rate": 0.072, "min": 36000, "max": 48000 },
+          { "rate": 0.076, "min": 48000, "max": 125000 },
+          { "rate": 0.079, "min": 125000, "max": 175000 },
+          { "rate": 0.0825, "min": 175000, "max": 225000 },
+          { "rate": 0.09, "min": 225000, "max": 275000 },
+          { "rate": 0.1, "min": 275000, "max": 325000 },
+          { "rate": 0.11, "min": 325000, "max": null }
+        ],
+        "married_joint": [
+          { "rate": 0.014, "min": 0, "max": 19200 },
+          { "rate": 0.032, "min": 19200, "max": 28800 },
+          { "rate": 0.055, "min": 28800, "max": 38400 },
+          { "rate": 0.064, "min": 38400, "max": 48000 },
+          { "rate": 0.068, "min": 48000, "max": 72000 },
+          { "rate": 0.072, "min": 72000, "max": 96000 },
+          { "rate": 0.076, "min": 96000, "max": 250000 },
+          { "rate": 0.079, "min": 250000, "max": 350000 },
+          { "rate": 0.0825, "min": 350000, "max": 450000 },
+          { "rate": 0.09, "min": 450000, "max": 550000 },
+          { "rate": 0.1, "min": 550000, "max": 650000 },
+          { "rate": 0.11, "min": 650000, "max": null }
+        ],
+        "head_of_household": [
+          { "rate": 0.014, "min": 0, "max": 14400 },
+          { "rate": 0.032, "min": 14400, "max": 21600 },
+          { "rate": 0.055, "min": 21600, "max": 28800 },
+          { "rate": 0.064, "min": 28800, "max": 36000 },
+          { "rate": 0.068, "min": 36000, "max": 54000 },
+          { "rate": 0.072, "min": 54000, "max": 72000 },
+          { "rate": 0.076, "min": 72000, "max": 187500 },
+          { "rate": 0.079, "min": 187500, "max": 262500 },
+          { "rate": 0.0825, "min": 262500, "max": 337500 },
+          { "rate": 0.09, "min": 337500, "max": 412500 },
+          { "rate": 0.1, "min": 412500, "max": 487500 },
+          { "rate": 0.11, "min": 487500, "max": null }
+        ]
+      }
+    },
+    {
+      "code": "ID",
+      "name": "Idaho",
+      "tax_type": "flat",
+      "rate": 0.05695,
+      "standard_deduction": { "single": 15750, "married_joint": 31500, "head_of_household": 23625, "married_separate": 15750 }
+    },
+    {
+      "code": "IL",
+      "name": "Illinois",
+      "tax_type": "flat",
+      "rate": 0.0495,
+      "allows_charitable_deduction": false,
+      "standard_deduction": { "single": 2850, "married_joint": 5700, "head_of_household": 2850, "married_separate": 2850 },
+      "note": "Illinois has no standard deduction; the amounts shown are the 2025 personal exemption allowance."
+    },
+    {
+      "code": "IN",
+      "name": "Indiana",
+      "tax_type": "flat",
+      "rate": 0.03,
+      "allows_charitable_deduction": false,
+      "standard_deduction": { "single": 1000, "married_joint": 2000, "head_of_household": 1000, "married_separate": 1000 },
+      "note": "State rate only. Indiana county income taxes are not modeled."
+    },
+    {
+      "code": "IA",
+      "name": "Iowa",
+      "tax_type": "flat",
+      "rate": 0.038,
+      "standard_deduction": { "single": 15750, "married_joint": 31500, "head_of_household": 23625, "married_separate": 15750 }
+    },
+    {
+      "code": "KS",
+      "name": "Kansas",
+      "tax_type": "graduated",
+      "standard_deduction": { "single": 3605, "married_joint": 8240, "head_of_household": 6180, "married_separate": 4120 },
+      "brackets": {
+        "default": [
+          { "rate": 0.052, "min": 0, "max": 23000 },
+          { "rate": 0.0558, "min": 23000, "max": null }
+        ],
+        "married_joint": [
+          { "rate": 0.052, "min": 0, "max": 46000 },
+          { "rate": 0.0558, "min": 46000, "max": null }
+        ]
+      }
+    },
+    {
+      "code": "KY",
+      "name": "Kentucky",
+      "tax_type": "flat",
+      "rate": 0.04,
+      "standard_deduction": { "single": 3270, "married_joint": 6540, "head_of_household": 3270, "married_separate": 3270 }
+    },
+    {
+      "code": "LA",
+      "name": "Louisiana",
+      "tax_type": "flat",
+      "rate": 0.03,
+      "standard_deduction": { "single": 12500, "married_joint": 25000, "head_of_household": 12500, "married_separate": 12500 }
+    },
+    {
+      "code": "ME",
+      "name": "Maine",
+      "tax_type": "graduated",
+      "standard_deduction": { "single": 15750, "married_joint": 31500, "head_of_household": 23625, "married_separate": 15750 },
+      "brackets": {
+        "default": [
+          { "rate": 0.058, "min": 0, "max": 26800 },
+          { "rate": 0.0675, "min": 26800, "max": 63450 },
+          { "rate": 0.0715, "min": 63450, "max": null }
+        ],
+        "married_joint": [
+          { "rate": 0.058, "min": 0, "max": 53600 },
+          { "rate": 0.0675, "min": 53600, "max": 126900 },
+          { "rate": 0.0715, "min": 126900, "max": null }
+        ],
+        "head_of_household": [
+          { "rate": 0.058, "min": 0, "max": 40200 },
+          { "rate": 0.0675, "min": 40200, "max": 95150 },
+          { "rate": 0.0715, "min": 95150, "max": null }
+        ]
+      }
+    },
+    {
+      "code": "MD",
+      "name": "Maryland",
+      "tax_type": "graduated",
+      "standard_deduction": { "single": 2700, "married_joint": 5450, "head_of_household": 5450, "married_separate": 2700 },
+      "brackets": {
+        "default": [
+          { "rate": 0.02, "min": 0, "max": 1000 },
+          { "rate": 0.03, "min": 1000, "max": 2000 },
+          { "rate": 0.04, "min": 2000, "max": 3000 },
+          { "rate": 0.0475, "min": 3000, "max": 100000 },
+          { "rate": 0.05, "min": 100000, "max": 125000 },
+          { "rate": 0.0525, "min": 125000, "max": 150000 },
+          { "rate": 0.055, "min": 150000, "max": 250000 },
+          { "rate": 0.0575, "min": 250000, "max": null }
+        ],
+        "married_joint": [
+          { "rate": 0.02, "min": 0, "max": 1000 },
+          { "rate": 0.03, "min": 1000, "max": 2000 },
+          { "rate": 0.04, "min": 2000, "max": 3000 },
+          { "rate": 0.0475, "min": 3000, "max": 150000 },
+          { "rate": 0.05, "min": 150000, "max": 175000 },
+          { "rate": 0.0525, "min": 175000, "max": 225000 },
+          { "rate": 0.055, "min": 225000, "max": 300000 },
+          { "rate": 0.0575, "min": 300000, "max": null }
+        ]
+      },
+      "note": "Maryland county income taxes (2.25%–3.20%) are not modeled."
+    },
+    {
+      "code": "MA",
+      "name": "Massachusetts",
+      "tax_type": "graduated",
+      "standard_deduction": { "single": 4400, "married_joint": 8800, "head_of_household": 6800, "married_separate": 4400 },
+      "brackets": {
+        "default": [
+          { "rate": 0.05, "min": 0, "max": 1083150 },
+          { "rate": 0.09, "min": 1083150, "max": null }
+        ]
+      },
+      "note": "5% flat rate plus the 4% 'millionaires surtax' on income above $1,083,150 (2025). Deduction amounts shown are personal exemptions."
+    },
+    {
+      "code": "MI",
+      "name": "Michigan",
+      "tax_type": "flat",
+      "rate": 0.0425,
+      "allows_charitable_deduction": false,
+      "standard_deduction": { "single": 5800, "married_joint": 11600, "head_of_household": 5800, "married_separate": 5800 },
+      "note": "Amounts shown are Michigan personal exemptions. City income taxes are not modeled."
+    },
+    {
+      "code": "MN",
+      "name": "Minnesota",
+      "tax_type": "graduated",
+      "standard_deduction": { "single": 14950, "married_joint": 29900, "head_of_household": 22425, "married_separate": 14950 },
+      "brackets": {
+        "default": [
+          { "rate": 0.0535, "min": 0, "max": 32570 },
+          { "rate": 0.068, "min": 32570, "max": 106990 },
+          { "rate": 0.0785, "min": 106990, "max": 198630 },
+          { "rate": 0.0985, "min": 198630, "max": null }
+        ],
+        "married_joint": [
+          { "rate": 0.0535, "min": 0, "max": 47620 },
+          { "rate": 0.068, "min": 47620, "max": 189180 },
+          { "rate": 0.0785, "min": 189180, "max": 330410 },
+          { "rate": 0.0985, "min": 330410, "max": null }
+        ],
+        "head_of_household": [
+          { "rate": 0.0535, "min": 0, "max": 40100 },
+          { "rate": 0.068, "min": 40100, "max": 161130 },
+          { "rate": 0.0785, "min": 161130, "max": 264050 },
+          { "rate": 0.0985, "min": 264050, "max": null }
+        ]
+      }
+    },
+    {
+      "code": "MS",
+      "name": "Mississippi",
+      "tax_type": "graduated",
+      "standard_deduction": { "single": 2300, "married_joint": 4600, "head_of_household": 3400, "married_separate": 2300 },
+      "brackets": {
+        "default": [
+          { "rate": 0.0, "min": 0, "max": 10000 },
+          { "rate": 0.044, "min": 10000, "max": null }
+        ]
+      }
+    },
+    {
+      "code": "MO",
+      "name": "Missouri",
+      "tax_type": "graduated",
+      "standard_deduction": { "single": 15750, "married_joint": 31500, "head_of_household": 23625, "married_separate": 15750 },
+      "brackets": {
+        "default": [
+          { "rate": 0.0, "min": 0, "max": 1313 },
+          { "rate": 0.02, "min": 1313, "max": 2626 },
+          { "rate": 0.025, "min": 2626, "max": 3939 },
+          { "rate": 0.03, "min": 3939, "max": 5252 },
+          { "rate": 0.035, "min": 5252, "max": 6565 },
+          { "rate": 0.04, "min": 6565, "max": 7878 },
+          { "rate": 0.047, "min": 7878, "max": null }
+        ]
+      }
+    },
+    {
+      "code": "MT",
+      "name": "Montana",
+      "tax_type": "graduated",
+      "standard_deduction": { "single": 15750, "married_joint": 31500, "head_of_household": 23625, "married_separate": 15750 },
+      "brackets": {
+        "default": [
+          { "rate": 0.047, "min": 0, "max": 21100 },
+          { "rate": 0.059, "min": 21100, "max": null }
+        ],
+        "married_joint": [
+          { "rate": 0.047, "min": 0, "max": 42200 },
+          { "rate": 0.059, "min": 42200, "max": null }
+        ],
+        "head_of_household": [
+          { "rate": 0.047, "min": 0, "max": 31700 },
+          { "rate": 0.059, "min": 31700, "max": null }
+        ]
+      }
+    },
+    {
+      "code": "NE",
+      "name": "Nebraska",
+      "tax_type": "graduated",
+      "standard_deduction": { "single": 8600, "married_joint": 17200, "head_of_household": 12600, "married_separate": 8600 },
+      "brackets": {
+        "default": [
+          { "rate": 0.0246, "min": 0, "max": 4030 },
+          { "rate": 0.0351, "min": 4030, "max": 24120 },
+          { "rate": 0.0501, "min": 24120, "max": 38870 },
+          { "rate": 0.052, "min": 38870, "max": null }
+        ],
+        "married_joint": [
+          { "rate": 0.0246, "min": 0, "max": 8040 },
+          { "rate": 0.0351, "min": 8040, "max": 48230 },
+          { "rate": 0.0501, "min": 48230, "max": 77730 },
+          { "rate": 0.052, "min": 77730, "max": null }
+        ],
+        "head_of_household": [
+          { "rate": 0.0246, "min": 0, "max": 7510 },
+          { "rate": 0.0351, "min": 7510, "max": 38550 },
+          { "rate": 0.0501, "min": 38550, "max": 57810 },
+          { "rate": 0.052, "min": 57810, "max": null }
+        ]
+      }
+    },
+    {
+      "code": "NV",
+      "name": "Nevada",
+      "tax_type": "none",
+      "standard_deduction": { "default": 0 },
+      "note": "No state individual income tax."
+    },
+    {
+      "code": "NH",
+      "name": "New Hampshire",
+      "tax_type": "none",
+      "standard_deduction": { "default": 0 },
+      "note": "No tax on wage or business income. The interest & dividends tax was fully repealed effective 2025."
+    },
+    {
+      "code": "NJ",
+      "name": "New Jersey",
+      "tax_type": "graduated",
+      "allows_charitable_deduction": false,
+      "standard_deduction": { "default": 0 },
+      "brackets": {
+        "default": [
+          { "rate": 0.014, "min": 0, "max": 20000 },
+          { "rate": 0.0175, "min": 20000, "max": 35000 },
+          { "rate": 0.035, "min": 35000, "max": 40000 },
+          { "rate": 0.05525, "min": 40000, "max": 75000 },
+          { "rate": 0.0637, "min": 75000, "max": 500000 },
+          { "rate": 0.0897, "min": 500000, "max": 1000000 },
+          { "rate": 0.1075, "min": 1000000, "max": null }
+        ],
+        "married_joint": [
+          { "rate": 0.014, "min": 0, "max": 20000 },
+          { "rate": 0.0175, "min": 20000, "max": 50000 },
+          { "rate": 0.0245, "min": 50000, "max": 70000 },
+          { "rate": 0.035, "min": 70000, "max": 80000 },
+          { "rate": 0.05525, "min": 80000, "max": 150000 },
+          { "rate": 0.0637, "min": 150000, "max": 500000 },
+          { "rate": 0.0897, "min": 500000, "max": 1000000 },
+          { "rate": 0.1075, "min": 1000000, "max": null }
+        ],
+        "head_of_household": [
+          { "rate": 0.014, "min": 0, "max": 20000 },
+          { "rate": 0.0175, "min": 20000, "max": 50000 },
+          { "rate": 0.0245, "min": 50000, "max": 70000 },
+          { "rate": 0.035, "min": 70000, "max": 80000 },
+          { "rate": 0.05525, "min": 80000, "max": 150000 },
+          { "rate": 0.0637, "min": 150000, "max": 500000 },
+          { "rate": 0.0897, "min": 500000, "max": 1000000 },
+          { "rate": 0.1075, "min": 1000000, "max": null }
+        ]
+      },
+      "note": "New Jersey allows no standard deduction; personal exemptions are not modeled."
+    },
+    {
+      "code": "NM",
+      "name": "New Mexico",
+      "tax_type": "graduated",
+      "standard_deduction": { "single": 15750, "married_joint": 31500, "head_of_household": 23625, "married_separate": 15750 },
+      "brackets": {
+        "default": [
+          { "rate": 0.015, "min": 0, "max": 5500 },
+          { "rate": 0.032, "min": 5500, "max": 16500 },
+          { "rate": 0.043, "min": 16500, "max": 33500 },
+          { "rate": 0.047, "min": 33500, "max": 66500 },
+          { "rate": 0.049, "min": 66500, "max": 210000 },
+          { "rate": 0.059, "min": 210000, "max": null }
+        ],
+        "married_joint": [
+          { "rate": 0.015, "min": 0, "max": 8000 },
+          { "rate": 0.032, "min": 8000, "max": 25000 },
+          { "rate": 0.043, "min": 25000, "max": 50000 },
+          { "rate": 0.047, "min": 50000, "max": 100000 },
+          { "rate": 0.049, "min": 100000, "max": 315000 },
+          { "rate": 0.059, "min": 315000, "max": null }
+        ]
+      }
+    },
+    {
+      "code": "NY",
+      "name": "New York",
+      "tax_type": "graduated",
+      "standard_deduction": { "single": 8000, "married_joint": 16050, "head_of_household": 11200, "married_separate": 8000 },
+      "brackets": {
+        "default": [
+          { "rate": 0.04, "min": 0, "max": 8500 },
+          { "rate": 0.045, "min": 8500, "max": 11700 },
+          { "rate": 0.0525, "min": 11700, "max": 13900 },
+          { "rate": 0.055, "min": 13900, "max": 80650 },
+          { "rate": 0.06, "min": 80650, "max": 215400 },
+          { "rate": 0.0685, "min": 215400, "max": 1077550 },
+          { "rate": 0.0965, "min": 1077550, "max": 5000000 },
+          { "rate": 0.103, "min": 5000000, "max": 25000000 },
+          { "rate": 0.109, "min": 25000000, "max": null }
+        ],
+        "married_joint": [
+          { "rate": 0.04, "min": 0, "max": 17150 },
+          { "rate": 0.045, "min": 17150, "max": 23600 },
+          { "rate": 0.0525, "min": 23600, "max": 27900 },
+          { "rate": 0.055, "min": 27900, "max": 161550 },
+          { "rate": 0.06, "min": 161550, "max": 323200 },
+          { "rate": 0.0685, "min": 323200, "max": 2155350 },
+          { "rate": 0.0965, "min": 2155350, "max": 5000000 },
+          { "rate": 0.103, "min": 5000000, "max": 25000000 },
+          { "rate": 0.109, "min": 25000000, "max": null }
+        ],
+        "head_of_household": [
+          { "rate": 0.04, "min": 0, "max": 12800 },
+          { "rate": 0.045, "min": 12800, "max": 17650 },
+          { "rate": 0.0525, "min": 17650, "max": 20900 },
+          { "rate": 0.055, "min": 20900, "max": 107650 },
+          { "rate": 0.06, "min": 107650, "max": 269300 },
+          { "rate": 0.0685, "min": 269300, "max": 1616450 },
+          { "rate": 0.0965, "min": 1616450, "max": 5000000 },
+          { "rate": 0.103, "min": 5000000, "max": 25000000 },
+          { "rate": 0.109, "min": 25000000, "max": null }
+        ]
+      },
+      "note": "New York City and Yonkers local income taxes are not modeled."
+    },
+    {
+      "code": "NC",
+      "name": "North Carolina",
+      "tax_type": "flat",
+      "rate": 0.0425,
+      "standard_deduction": { "single": 12750, "married_joint": 25500, "head_of_household": 19125, "married_separate": 12750 }
+    },
+    {
+      "code": "ND",
+      "name": "North Dakota",
+      "tax_type": "graduated",
+      "standard_deduction": { "single": 15750, "married_joint": 31500, "head_of_household": 23625, "married_separate": 15750 },
+      "brackets": {
+        "default": [
+          { "rate": 0.0, "min": 0, "max": 48475 },
+          { "rate": 0.0195, "min": 48475, "max": 244825 },
+          { "rate": 0.025, "min": 244825, "max": null }
+        ],
+        "married_joint": [
+          { "rate": 0.0, "min": 0, "max": 80975 },
+          { "rate": 0.0195, "min": 80975, "max": 298075 },
+          { "rate": 0.025, "min": 298075, "max": null }
+        ]
+      }
+    },
+    {
+      "code": "OH",
+      "name": "Ohio",
+      "tax_type": "graduated",
+      "allows_charitable_deduction": false,
+      "standard_deduction": { "default": 0 },
+      "brackets": {
+        "default": [
+          { "rate": 0.0, "min": 0, "max": 26050 },
+          { "rate": 0.0275, "min": 26050, "max": 100000 },
+          { "rate": 0.035, "min": 100000, "max": null }
+        ]
+      },
+      "note": "Ohio has no standard deduction; personal exemptions and municipal income taxes are not modeled."
+    },
+    {
+      "code": "OK",
+      "name": "Oklahoma",
+      "tax_type": "graduated",
+      "standard_deduction": { "single": 6350, "married_joint": 12700, "head_of_household": 9350, "married_separate": 6350 },
+      "brackets": {
+        "default": [
+          { "rate": 0.0025, "min": 0, "max": 1000 },
+          { "rate": 0.0075, "min": 1000, "max": 2500 },
+          { "rate": 0.0175, "min": 2500, "max": 3750 },
+          { "rate": 0.0275, "min": 3750, "max": 4900 },
+          { "rate": 0.0375, "min": 4900, "max": 7200 },
+          { "rate": 0.0475, "min": 7200, "max": null }
+        ],
+        "married_joint": [
+          { "rate": 0.0025, "min": 0, "max": 2000 },
+          { "rate": 0.0075, "min": 2000, "max": 5000 },
+          { "rate": 0.0175, "min": 5000, "max": 7500 },
+          { "rate": 0.0275, "min": 7500, "max": 9800 },
+          { "rate": 0.0375, "min": 9800, "max": 12200 },
+          { "rate": 0.0475, "min": 12200, "max": null }
+        ]
+      }
+    },
+    {
+      "code": "OR",
+      "name": "Oregon",
+      "tax_type": "graduated",
+      "standard_deduction": { "single": 2905, "married_joint": 5810, "head_of_household": 4675, "married_separate": 2905 },
+      "brackets": {
+        "default": [
+          { "rate": 0.0475, "min": 0, "max": 4400 },
+          { "rate": 0.0675, "min": 4400, "max": 11050 },
+          { "rate": 0.0875, "min": 11050, "max": 125000 },
+          { "rate": 0.099, "min": 125000, "max": null }
+        ],
+        "married_joint": [
+          { "rate": 0.0475, "min": 0, "max": 8800 },
+          { "rate": 0.0675, "min": 8800, "max": 22100 },
+          { "rate": 0.0875, "min": 22100, "max": 250000 },
+          { "rate": 0.099, "min": 250000, "max": null }
+        ]
+      },
+      "note": "Local transit and Portland-area income taxes are not modeled."
+    },
+    {
+      "code": "PA",
+      "name": "Pennsylvania",
+      "tax_type": "flat",
+      "rate": 0.0307,
+      "allows_charitable_deduction": false,
+      "standard_deduction": { "default": 0 },
+      "note": "Pennsylvania allows no standard deduction and does not permit a charitable contribution deduction against personal income tax. Local earned income taxes are not modeled."
+    },
+    {
+      "code": "RI",
+      "name": "Rhode Island",
+      "tax_type": "graduated",
+      "allows_charitable_deduction": false,
+      "standard_deduction": { "single": 10900, "married_joint": 21800, "head_of_household": 16350, "married_separate": 10900 },
+      "brackets": {
+        "default": [
+          { "rate": 0.0375, "min": 0, "max": 79900 },
+          { "rate": 0.0475, "min": 79900, "max": 181650 },
+          { "rate": 0.0599, "min": 181650, "max": null }
+        ]
+      }
+    },
+    {
+      "code": "SC",
+      "name": "South Carolina",
+      "tax_type": "graduated",
+      "standard_deduction": { "single": 15750, "married_joint": 31500, "head_of_household": 23625, "married_separate": 15750 },
+      "brackets": {
+        "default": [
+          { "rate": 0.0, "min": 0, "max": 3560 },
+          { "rate": 0.03, "min": 3560, "max": 17830 },
+          { "rate": 0.062, "min": 17830, "max": null }
+        ]
+      }
+    },
+    {
+      "code": "SD",
+      "name": "South Dakota",
+      "tax_type": "none",
+      "standard_deduction": { "default": 0 },
+      "note": "No state individual income tax."
+    },
+    {
+      "code": "TN",
+      "name": "Tennessee",
+      "tax_type": "none",
+      "standard_deduction": { "default": 0 },
+      "note": "No state individual income tax."
+    },
+    {
+      "code": "TX",
+      "name": "Texas",
+      "tax_type": "none",
+      "standard_deduction": { "default": 0 },
+      "note": "No state individual income tax."
+    },
+    {
+      "code": "UT",
+      "name": "Utah",
+      "tax_type": "flat",
+      "rate": 0.0455,
+      "standard_deduction": { "default": 0 },
+      "note": "Utah replaces the standard deduction with a nonrefundable taxpayer credit that is not modeled."
+    },
+    {
+      "code": "VT",
+      "name": "Vermont",
+      "tax_type": "graduated",
+      "standard_deduction": { "single": 7400, "married_joint": 14850, "head_of_household": 7400, "married_separate": 7400 },
+      "brackets": {
+        "default": [
+          { "rate": 0.0335, "min": 0, "max": 47900 },
+          { "rate": 0.066, "min": 47900, "max": 116000 },
+          { "rate": 0.076, "min": 116000, "max": 242000 },
+          { "rate": 0.0875, "min": 242000, "max": null }
+        ],
+        "married_joint": [
+          { "rate": 0.0335, "min": 0, "max": 79950 },
+          { "rate": 0.066, "min": 79950, "max": 193300 },
+          { "rate": 0.076, "min": 193300, "max": 294600 },
+          { "rate": 0.0875, "min": 294600, "max": null }
+        ]
+      }
+    },
+    {
+      "code": "VA",
+      "name": "Virginia",
+      "tax_type": "graduated",
+      "standard_deduction": { "single": 8750, "married_joint": 17500, "head_of_household": 8750, "married_separate": 8750 },
+      "brackets": {
+        "default": [
+          { "rate": 0.02, "min": 0, "max": 3000 },
+          { "rate": 0.03, "min": 3000, "max": 5000 },
+          { "rate": 0.05, "min": 5000, "max": 17000 },
+          { "rate": 0.0575, "min": 17000, "max": null }
+        ]
+      }
+    },
+    {
+      "code": "WA",
+      "name": "Washington",
+      "tax_type": "none",
+      "standard_deduction": { "default": 0 },
+      "note": "No tax on wage or business income. Washington's 7% long-term capital gains excise tax is not modeled."
+    },
+    {
+      "code": "WV",
+      "name": "West Virginia",
+      "tax_type": "graduated",
+      "allows_charitable_deduction": false,
+      "standard_deduction": { "default": 0 },
+      "brackets": {
+        "default": [
+          { "rate": 0.0222, "min": 0, "max": 10000 },
+          { "rate": 0.0296, "min": 10000, "max": 25000 },
+          { "rate": 0.0333, "min": 25000, "max": 40000 },
+          { "rate": 0.0444, "min": 40000, "max": 60000 },
+          { "rate": 0.0482, "min": 60000, "max": null }
+        ]
+      },
+      "note": "West Virginia allows no standard deduction; personal exemptions are not modeled."
+    },
+    {
+      "code": "WI",
+      "name": "Wisconsin",
+      "tax_type": "graduated",
+      "standard_deduction": { "single": 13930, "married_joint": 25760, "head_of_household": 17980, "married_separate": 12250 },
+      "brackets": {
+        "default": [
+          { "rate": 0.035, "min": 0, "max": 14680 },
+          { "rate": 0.044, "min": 14680, "max": 29370 },
+          { "rate": 0.053, "min": 29370, "max": 323290 },
+          { "rate": 0.0765, "min": 323290, "max": null }
+        ],
+        "married_joint": [
+          { "rate": 0.035, "min": 0, "max": 19580 },
+          { "rate": 0.044, "min": 19580, "max": 39150 },
+          { "rate": 0.053, "min": 39150, "max": 431060 },
+          { "rate": 0.0765, "min": 431060, "max": null }
+        ]
+      },
+      "note": "Wisconsin's standard deduction phases out at higher incomes; the maximum amount is used here."
+    },
+    {
+      "code": "WY",
+      "name": "Wyoming",
+      "tax_type": "none",
+      "standard_deduction": { "default": 0 },
+      "note": "No state individual income tax."
+    }
+  ]
+}
