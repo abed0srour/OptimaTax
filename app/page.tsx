@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import logo from "@/public/logo.png";
 import { StepGiving } from "@/components/steps/step-giving";
@@ -10,7 +10,7 @@ import { StepResults } from "@/components/steps/step-results";
 import { StepTax } from "@/components/steps/step-tax";
 import { ContextBar } from "@/components/wizard/context-bar";
 import { Stepper, type StepMeta } from "@/components/wizard/stepper";
-import { parseMoney } from "@/lib/format";
+import { parseMoney, toMoneyInput } from "@/lib/format";
 import { buildComparison } from "@/lib/tax";
 import { states, taxYear } from "@/lib/taxData";
 import type { DeductionMode, FilingStatus } from "@/lib/types";
@@ -30,6 +30,7 @@ const DEFAULTS = {
   expensesText: "",
   donationText: "",
   deductionMode: "stacked" as DeductionMode,
+  matchKhums: false,
 };
 
 export default function Home() {
@@ -44,6 +45,7 @@ export default function Home() {
   const [deductionMode, setDeductionMode] = useState<DeductionMode>(
     DEFAULTS.deductionMode,
   );
+  const [matchKhums, setMatchKhums] = useState(DEFAULTS.matchKhums);
 
   const comparison = useMemo(
     () =>
@@ -57,6 +59,15 @@ export default function Home() {
       }),
     [incomeText, expensesText, donationText, filingStatus, stateCode, deductionMode],
   );
+
+  const khumsObligation = comparison.khums.obligation;
+
+  // Keep the donation pinned to the khums obligation while auto-matching is
+  // on, so edits to income/expenses upstream keep the field in sync.
+  useEffect(() => {
+    if (!matchKhums) return;
+    setDonationText(toMoneyInput(khumsObligation));
+  }, [matchKhums, khumsObligation]);
 
   function goTo(index: number) {
     const next = Math.min(Math.max(index, 0), STEPS.length - 1);
@@ -74,6 +85,7 @@ export default function Home() {
     setExpensesText(DEFAULTS.expensesText);
     setDonationText(DEFAULTS.donationText);
     setDeductionMode(DEFAULTS.deductionMode);
+    setMatchKhums(DEFAULTS.matchKhums);
     setFurthest(0);
     setStep(0);
     if (typeof window !== "undefined") {
@@ -126,6 +138,7 @@ export default function Home() {
             onBack={() => goTo(1)}
             onDonate={() => goTo(3)}
             onSkip={() => {
+              setMatchKhums(false);
               setDonationText("");
               goTo(4);
             }}
@@ -136,8 +149,11 @@ export default function Home() {
           <StepGiving
             donationText={donationText}
             deductionMode={deductionMode}
+            khumsObligation={khumsObligation}
+            matchKhums={matchKhums}
             onDonationChange={setDonationText}
             onDeductionModeChange={setDeductionMode}
+            onMatchKhumsChange={setMatchKhums}
             onBack={() => goTo(2)}
             onNext={() => goTo(4)}
           />

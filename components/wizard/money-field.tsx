@@ -19,6 +19,7 @@ export function MoneyField({
   placeholder = "0",
   action,
   tone = "default",
+  disabled = false,
 }: {
   label: string;
   icon?: ReactNode;
@@ -27,6 +28,7 @@ export function MoneyField({
   placeholder?: string;
   action?: { label: string; onClick: () => void; title?: string };
   tone?: "default" | "give";
+  disabled?: boolean;
 }) {
   const id = useId();
 
@@ -81,6 +83,7 @@ export function MoneyField({
           value={value}
           placeholder={placeholder}
           onChange={(event) => onChange(formatMoneyInput(event.target.value))}
+          disabled={disabled}
           className={cn(
             "tnum h-14 rounded-xl bg-card pl-9 text-xl font-semibold tracking-tight md:text-xl",
             "placeholder:font-normal placeholder:tracking-normal",
