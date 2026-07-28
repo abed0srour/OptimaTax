@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Image from "next/image";
 import logo from "@/public/logo.png";
 import { StepGiving } from "@/components/steps/step-giving";
@@ -11,7 +11,7 @@ import { StepTax } from "@/components/steps/step-tax";
 import { ContextBar } from "@/components/wizard/context-bar";
 import { Stepper, type StepMeta } from "@/components/wizard/stepper";
 import { parseMoney, toMoneyInput } from "@/lib/format";
-import { buildComparison } from "@/lib/tax";
+import { buildComparison, calculateNetProfit, KHUMS_RATE } from "@/lib/tax";
 import { states, taxYear } from "@/lib/taxData";
 import type { DeductionMode, FilingStatus } from "@/lib/types";
 
@@ -47,27 +47,38 @@ export default function Home() {
   );
   const [matchKhums, setMatchKhums] = useState(DEFAULTS.matchKhums);
 
+  const netProfit = useMemo(
+    () => calculateNetProfit(parseMoney(incomeText), parseMoney(expensesText)),
+    [incomeText, expensesText],
+  );
+  const khumsObligation = netProfit * KHUMS_RATE;
+
+  // While auto-matching is on, the field displays (and the engine uses) the
+  // khums obligation directly instead of whatever was last typed, so it stays
+  // in sync as income/expenses change upstream — no effect required.
+  const effectiveDonationText = matchKhums
+    ? toMoneyInput(khumsObligation)
+    : donationText;
+
   const comparison = useMemo(
     () =>
       buildComparison({
         totalIncome: parseMoney(incomeText),
         expenses: parseMoney(expensesText),
-        donation: parseMoney(donationText),
+        donation: parseMoney(effectiveDonationText),
         filingStatus,
         stateCode,
         deductionMode,
       }),
-    [incomeText, expensesText, donationText, filingStatus, stateCode, deductionMode],
+    [
+      incomeText,
+      expensesText,
+      effectiveDonationText,
+      filingStatus,
+      stateCode,
+      deductionMode,
+    ],
   );
-
-  const khumsObligation = comparison.khums.obligation;
-
-  // Keep the donation pinned to the khums obligation while auto-matching is
-  // on, so edits to income/expenses upstream keep the field in sync.
-  useEffect(() => {
-    if (!matchKhums) return;
-    setDonationText(toMoneyInput(khumsObligation));
-  }, [matchKhums, khumsObligation]);
 
   function goTo(index: number) {
     const next = Math.min(Math.max(index, 0), STEPS.length - 1);
@@ -147,10 +158,11 @@ export default function Home() {
 
         {step === 3 ? (
           <StepGiving
-            donationText={donationText}
+            donationText={effectiveDonationText}
             deductionMode={deductionMode}
             khumsObligation={khumsObligation}
             matchKhums={matchKhums}
+            bracketTarget={comparison.bracketTarget}
             onDonationChange={setDonationText}
             onDeductionModeChange={setDeductionMode}
             onMatchKhumsChange={setMatchKhums}

@@ -143,6 +143,17 @@ export interface KhumsBreakdown {
   coverage: number;
 }
 
+export interface BracketTarget {
+  /** Marginal federal rate the donor currently sits in. */
+  currentRate: number;
+  /** Marginal federal rate one bracket down. */
+  targetRate: number;
+  /** Total donation (not incremental) that lands taxable income at the bracket floor. */
+  targetDonation: number;
+  /** How much more to give, on top of what's already entered, to get there. */
+  additionalDonationNeeded: number;
+}
+
 export interface TaxComparison {
   netProfit: number;
   donationEntered: number;
@@ -152,6 +163,8 @@ export interface TaxComparison {
   donationCarryforward: number;
   agiLimitAmount: number;
   khums: KhumsBreakdown;
+  /** Null once already in the lowest federal bracket — there's nowhere lower to go. */
+  bracketTarget: BracketTarget | null;
   scenarioA: ScenarioBreakdown;
   scenarioB: ScenarioBreakdown;
   /** scenarioA.totalTax − scenarioB.totalTax. */

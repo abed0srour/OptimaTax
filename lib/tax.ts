@@ -7,6 +7,7 @@ import {
 import type {
   Bracket,
   BracketSlice,
+  BracketTarget,
   CalculatorInput,
   DeductionMode,
   FilingStatus,
@@ -150,6 +151,54 @@ function totalDeduction(
     : Math.max(standardDeduction, donation);
 }
 
+/**
+ * How much more to give, from what's already entered, to drop federal taxable
+ * income down to the floor of the bracket it currently sits in — the point
+ * past which further giving still saves tax, just at the next lower rate.
+ *
+ * Federal only: state schedules have their own, unrelated breakpoints.
+ */
+export function calculateBracketTarget(
+  netProfit: number,
+  donation: number,
+  status: FilingStatus,
+  mode: DeductionMode,
+): BracketTarget | null {
+  const brackets = federalBrackets(status);
+  const standardDeduction = federalStandardDeduction(status);
+  const givenDonation = clampToZero(donation);
+  const taxableIncome = clampToZero(
+    netProfit - totalDeduction(standardDeduction, givenDonation, mode),
+  );
+
+  let bracketIndex = 0;
+  brackets.forEach((bracket, index) => {
+    if (taxableIncome > bracket.min) bracketIndex = index;
+  });
+  if (bracketIndex === 0) return null; // already in the lowest bracket
+
+  const currentBracket = brackets[bracketIndex];
+  const targetBracket = brackets[bracketIndex - 1];
+  const bracketFloor = currentBracket.min;
+
+  // Total donation (not just the increment) that lands taxable income right
+  // at the current bracket's floor.
+  const targetDonation =
+    mode === "stacked"
+      ? netProfit - bracketFloor - standardDeduction
+      : netProfit - bracketFloor;
+
+  const additionalDonationNeeded = clampToZero(targetDonation - givenDonation);
+  if (additionalDonationNeeded <= 0) return null;
+
+  return {
+    currentRate: currentBracket.rate,
+    targetRate: targetBracket.rate,
+    targetDonation,
+    additionalDonationNeeded,
+  };
+}
+
 function buildScenario(
   label: string,
   netProfit: number,
@@ -233,6 +282,12 @@ export function buildComparison(input: CalculatorInput): TaxComparison {
     donationCarryforward: donationEntered - deductibleDonation,
     agiLimitAmount,
     khums: calculateKhums(netProfit, donationEntered),
+    bracketTarget: calculateBracketTarget(
+      netProfit,
+      donationEntered,
+      filingStatus,
+      deductionMode,
+    ),
     scenarioA,
     scenarioB,
     taxSavings,

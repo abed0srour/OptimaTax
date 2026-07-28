@@ -1,12 +1,13 @@
 "use client";
 
-import { HandCoins, HandHeart, Moon } from "lucide-react";
+import { HandCoins, HandHeart, Moon, TrendingDown } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ChoiceGroup } from "@/components/wizard/choice-group";
 import { MoneyField } from "@/components/wizard/money-field";
 import { StepCard, StepNav } from "@/components/wizard/step-card";
-import { formatCurrency, parseMoney } from "@/lib/format";
-import type { DeductionMode } from "@/lib/types";
+import { formatCurrency, formatRate, parseMoney, toMoneyInput } from "@/lib/format";
+import type { BracketTarget, DeductionMode } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 export const DEDUCTION_MODES: {
@@ -33,6 +34,7 @@ export function StepGiving({
   deductionMode,
   khumsObligation,
   matchKhums,
+  bracketTarget,
   onDonationChange,
   onDeductionModeChange,
   onMatchKhumsChange,
@@ -43,6 +45,7 @@ export function StepGiving({
   deductionMode: DeductionMode;
   khumsObligation: number;
   matchKhums: boolean;
+  bracketTarget: BracketTarget | null;
   onDonationChange: (value: string) => void;
   onDeductionModeChange: (mode: DeductionMode) => void;
   onMatchKhumsChange: (checked: boolean) => void;
@@ -71,6 +74,36 @@ export function StepGiving({
         tone="give"
         disabled={matchKhums}
       />
+
+      {!matchKhums && bracketTarget ? (
+        <div className="flex items-start gap-3 rounded-xl border border-keep/25 bg-keep-soft/60 px-4 py-3">
+          <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-keep/15 text-keep-ink">
+            <TrendingDown className="size-4" />
+          </span>
+          <span className="min-w-0 flex-1 space-y-1.5">
+            <span className="block text-[0.9rem] font-medium text-keep-ink">
+              Drop from {formatRate(bracketTarget.currentRate)} into{" "}
+              {formatRate(bracketTarget.targetRate)}
+            </span>
+            <span className="block text-[0.8rem] leading-relaxed text-keep-ink/80">
+              Give {formatCurrency(bracketTarget.additionalDonationNeeded)} more
+              (federal bracket only) to fall out of the{" "}
+              {formatRate(bracketTarget.currentRate)} bracket entirely.
+            </span>
+            <Button
+              type="button"
+              variant="outline"
+              size="xs"
+              onClick={() =>
+                onDonationChange(toMoneyInput(bracketTarget.targetDonation))
+              }
+              className="border-keep/40 text-keep-ink hover:bg-keep/10"
+            >
+              Use {formatCurrency(bracketTarget.targetDonation)}
+            </Button>
+          </span>
+        </div>
+      ) : null}
 
       <label
         className={cn(
