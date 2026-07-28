@@ -175,6 +175,8 @@ export interface TaxComparison {
   givingDiscount: number;
   stateAllowsCharitableDeduction: boolean;
   stateEntry: StateTaxEntry;
+  /** Which deduction model produced these figures, so the UI can explain them. */
+  deductionMode: DeductionMode;
 }
 
 /**

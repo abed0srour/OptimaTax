@@ -96,9 +96,11 @@ Keep the source files in IRS convention. Values can then be pasted straight from
 │   │   ├── step-income.tsx    2 · Income & expenses
 │   │   ├── step-tax.tsx       3 · The bill, and the call to give
 │   │   ├── step-giving.tsx    4 · Donation + khums coverage verdict
-│   │   └── step-results.tsx   5 · Verdict, chart, and the detail below
+│   │   └── step-results.tsx   5 · Verdict, money flow, and one detail toggle
 │   └── results/
-│       ├── tax-chart.tsx      Both cases on one scale + table view
+│       ├── money-flow.tsx     Net profit split into tax / donation / kept
+│       ├── tax-compare.tsx    Both totals and the gap between them
+│       ├── khums-coverage.tsx Whether the gift covered the year's khums
 │       ├── bracket-table.tsx  Chunk-by-chunk bracket audit trail
 │       └── limitations.tsx    Scope and caveats
 ├── data/

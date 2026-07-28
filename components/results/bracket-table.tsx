@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import { Disclosure } from "@/components/ui-extras/disclosure";
 import {
   Table,
   TableBody,
@@ -13,7 +12,8 @@ import type { ProgressiveResult } from "@/lib/types";
 
 /**
  * The chunk-by-chunk audit trail: which bracket each slice of income landed in
- * and what it cost.
+ * and what it cost. Rendered plainly — the caller decides whether to hide it,
+ * so the results page can keep every detail behind one single toggle.
  */
 export function BracketTable({
   title,
@@ -27,12 +27,21 @@ export function BracketTable({
   emptyMessage?: string;
 }) {
   return (
-    <Disclosure
-      title={title}
-      icon={icon}
-      aside={<span className="tnum">{formatCurrency(result.tax)}</span>}
-      className="bg-card"
-    >
+    <section className="space-y-2">
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="flex min-w-0 items-center gap-2 text-[0.85rem] font-semibold">
+          {icon ? (
+            <span className="shrink-0 text-muted-foreground [&_svg]:size-4">
+              {icon}
+            </span>
+          ) : null}
+          {title}
+        </h3>
+        <span className="tnum shrink-0 text-[0.85rem] font-semibold whitespace-nowrap">
+          {formatCurrency(result.tax)}
+        </span>
+      </div>
+
       {result.slices.length === 0 ? (
         <p className="text-sm text-muted-foreground">{emptyMessage}</p>
       ) : (
@@ -71,6 +80,6 @@ export function BracketTable({
           </TableBody>
         </Table>
       )}
-    </Disclosure>
+    </section>
   );
 }
