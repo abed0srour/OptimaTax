@@ -77,7 +77,7 @@ export function StepTax({
        */}
       <div className="space-y-2 pt-1">
         <p className="text-center text-[0.85rem] leading-relaxed text-foreground/70">
-          See your total taxes if you donate
+          pay less taxes by donating to a 501(c)(3) nonprofit organization 
         </p>
 
         <Button

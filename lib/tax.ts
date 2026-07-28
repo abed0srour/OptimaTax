@@ -295,6 +295,5 @@ export function buildComparison(input: CalculatorInput): TaxComparison {
     givingDiscount: donationEntered > 0 ? taxSavings / donationEntered : 0,
     stateAllowsCharitableDeduction: state.allowsCharitableDeduction,
     stateEntry: state,
-    deductionMode,
   };
 }

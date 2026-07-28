@@ -160,9 +160,8 @@ export default function Home() {
           <StepGiving
             donationText={effectiveDonationText}
             deductionMode={deductionMode}
-            khumsObligation={khumsObligation}
             matchKhums={matchKhums}
-            bracketTarget={comparison.bracketTarget}
+            comparison={comparison}
             onDonationChange={setDonationText}
             onDeductionModeChange={setDeductionMode}
             onMatchKhumsChange={setMatchKhums}
