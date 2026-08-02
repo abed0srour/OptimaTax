@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import Image from "next/image";
 import logo from "@/public/logo.png";
 import { StepGiving } from "@/components/steps/step-giving";
-import { StepIncome } from "@/components/steps/step-income";
+import { StepIncome, type IncomeText } from "@/components/steps/step-income";
 import { StepPlace } from "@/components/steps/step-place";
 import { StepResults } from "@/components/steps/step-results";
 import { StepTax } from "@/components/steps/step-tax";
@@ -13,24 +13,32 @@ import { Stepper, type StepMeta } from "@/components/wizard/stepper";
 import { parseMoney, toMoneyInput } from "@/lib/format";
 import { buildComparison, calculateNetProfit, KHUMS_RATE } from "@/lib/tax";
 import { states, taxYear } from "@/lib/taxData";
-import type { DeductionMode, FilingStatus } from "@/lib/types";
+import type { DeductionMode, Dependents, FilingStatus } from "@/lib/types";
 
 const STEPS: StepMeta[] = [
-  { id: "place", short: "State", title: "Where do you file?" },
+  { id: "place", short: "You", title: "About you" },
   { id: "income", short: "Income", title: "What did you earn?" },
   { id: "tax", short: "Your tax", title: "This is what you owe" },
   { id: "giving", short: "Giving", title: "How much will you give?" },
   { id: "results", short: "Results", title: "Your results" },
 ];
 
+const EMPTY_INCOME: IncomeText = {
+  wages: "",
+  selfEmployment: "",
+  longTermCapitalGains: "",
+  otherInvestmentIncome: "",
+};
+
 const DEFAULTS = {
   stateCode: "CA",
   filingStatus: "single" as FilingStatus,
-  incomeText: "",
+  incomeText: EMPTY_INCOME,
   expensesText: "",
   donationText: "",
   deductionMode: "stacked" as DeductionMode,
   matchKhums: false,
+  dependents: { qualifyingChildren: 0, otherDependents: 0 } as Dependents,
 };
 
 export default function Home() {
@@ -39,17 +47,29 @@ export default function Home() {
 
   const [stateCode, setStateCode] = useState(DEFAULTS.stateCode);
   const [filingStatus, setFilingStatus] = useState<FilingStatus>(DEFAULTS.filingStatus);
-  const [incomeText, setIncomeText] = useState(DEFAULTS.incomeText);
+  const [incomeText, setIncomeText] = useState<IncomeText>(DEFAULTS.incomeText);
   const [expensesText, setExpensesText] = useState(DEFAULTS.expensesText);
   const [donationText, setDonationText] = useState(DEFAULTS.donationText);
   const [deductionMode, setDeductionMode] = useState<DeductionMode>(
     DEFAULTS.deductionMode,
   );
   const [matchKhums, setMatchKhums] = useState(DEFAULTS.matchKhums);
+  const [dependents, setDependents] = useState<Dependents>(DEFAULTS.dependents);
 
+  const income = useMemo(
+    () => ({
+      wages: parseMoney(incomeText.wages),
+      selfEmployment: parseMoney(incomeText.selfEmployment),
+      longTermCapitalGains: parseMoney(incomeText.longTermCapitalGains),
+      otherInvestmentIncome: parseMoney(incomeText.otherInvestmentIncome),
+    }),
+    [incomeText],
+  );
+
+  const expenses = parseMoney(expensesText);
   const netProfit = useMemo(
-    () => calculateNetProfit(parseMoney(incomeText), parseMoney(expensesText)),
-    [incomeText, expensesText],
+    () => calculateNetProfit(income, expenses),
+    [income, expenses],
   );
   const khumsObligation = netProfit * KHUMS_RATE;
 
@@ -63,20 +83,22 @@ export default function Home() {
   const comparison = useMemo(
     () =>
       buildComparison({
-        totalIncome: parseMoney(incomeText),
-        expenses: parseMoney(expensesText),
+        income,
+        expenses,
         donation: parseMoney(effectiveDonationText),
         filingStatus,
         stateCode,
         deductionMode,
+        dependents,
       }),
     [
-      incomeText,
-      expensesText,
+      income,
+      expenses,
       effectiveDonationText,
       filingStatus,
       stateCode,
       deductionMode,
+      dependents,
     ],
   );
 
@@ -97,6 +119,7 @@ export default function Home() {
     setDonationText(DEFAULTS.donationText);
     setDeductionMode(DEFAULTS.deductionMode);
     setMatchKhums(DEFAULTS.matchKhums);
+    setDependents(DEFAULTS.dependents);
     setFurthest(0);
     setStep(0);
     if (typeof window !== "undefined") {
@@ -123,8 +146,10 @@ export default function Home() {
           <StepPlace
             stateCode={stateCode}
             filingStatus={filingStatus}
+            dependents={dependents}
             onStateChange={setStateCode}
             onFilingStatusChange={setFilingStatus}
+            onDependentsChange={setDependents}
             onNext={() => goTo(1)}
           />
         ) : null}
@@ -134,7 +159,6 @@ export default function Home() {
             incomeText={incomeText}
             expensesText={expensesText}
             netProfit={comparison.netProfit}
-            rawNetProfit={parseMoney(incomeText) - parseMoney(expensesText)}
             onIncomeChange={setIncomeText}
             onExpensesChange={setExpensesText}
             onBack={() => goTo(0)}

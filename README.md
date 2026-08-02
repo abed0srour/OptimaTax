@@ -13,7 +13,7 @@ The interface is light-mode only and built on [shadcn/ui](https://ui.shadcn.com)
 | Step | Asks for | Shows |
 | --- | --- | --- |
 | **1 · State** | State of residence (type-ahead by name *or* code — "NY", "new y"), filing status | — |
-| **2 · Income** | Gross income, deductible expenses | Running net profit; *Calculate my tax* stays disabled until there is a profit |
+| **2 · Income** | W-2 wages, 1099 revenue, business expenses, investment income | Running total income; *Calculate my tax* stays disabled until there is some |
 | **3 · Your tax** | — | The bill as it stands, split federal / state, and a *Give to a 501(c)(3)* button |
 | **4 · Giving** | Donation amount, deduction model | Khums due, a *Give exactly this* shortcut, and a live verdict on whether the amount covers it |
 | **5 · Results** | — | Which option is cheaper, the chart, and the detail below |
@@ -26,13 +26,26 @@ The screens carry no explanatory prose — the controls and their live figures a
 
 ## What it does
 
-**Net profit** — `Total income − operating expenses`, floored at zero. This is the pool everything else sits on.
+**Total income** — W-2 wages, self-employment profit (`1099 revenue − business expenses`), long-term capital gains, and other investment income. This is the pool everything else sits on.
 
-**Khums** — one fifth (20%) of net profit, with a tracker showing how much of the obligation your donation covers, what remains outstanding, and how much you are giving beyond it as voluntary sadaqah.
+**Income taxed by source, not in aggregate**, because each obeys a different rule:
 
-**Scenario A (no donation)** — federal and state tax on `net profit − standard deduction`.
+| Source | What it carries |
+| --- | --- |
+| W-2 wages | Ordinary brackets + the employee half of FICA (6.2% + 1.45%, Social Security capped at the wage base) |
+| Self-employment / 1099 | Ordinary brackets + SECA at 15.3% on 92.35% of profit; half of it deducted above the line. W-2 wages fill the Social Security cap first |
+| Long-term gains & qualified dividends | The 0/15/20% table, *stacked on top of* ordinary income — so ordinary earnings push gains into higher gain brackets |
+| Interest, ordinary dividends, short-term gains | Ordinary brackets, and counted as investment income for NIIT |
 
-**Scenario B (donation `x`)** — the same, with the charitable gift deducted before tax. Both scenarios include a chunk-by-chunk bracket walkthrough, so you can see exactly which slice of income was taxed at which rate.
+**Surtaxes** — the 0.9% Additional Medicare Tax on earned income above the statutory threshold, and the 3.8% NIIT on the lesser of investment income or the MAGI overage.
+
+**Dependents** — the Child Tax Credit at $2,200 per child under 17 and $500 per other dependent, reduced by $50 for each $1,000 of MAGI over the threshold. Applied as non-refundable: it reduces tax to zero and stops.
+
+**Khums** — one fifth (20%) of total income, with a tracker showing how much of the obligation your donation covers, what remains outstanding, and how much you are giving beyond it as voluntary sadaqah.
+
+**Scenario A (no donation)** — every tax above, on `AGI − standard deduction`.
+
+**Scenario B (donation `x`)** — the same, with the charitable gift deducted before tax. Note that a gift lowers income tax only: self-employment tax and FICA are unaffected. Both scenarios include a chunk-by-chunk bracket walkthrough, so you can see exactly which slice of income was taxed at which rate.
 
 **Optimization metrics** — the tax saved and the real out-of-pocket cost of the gift, with the winning option named outright on the results screen.
 
@@ -92,8 +105,8 @@ Keep the source files in IRS convention. Values can then be pasted straight from
 │   │   ├── state-combobox.tsx Type-ahead state picker (name or postal code)
 │   │   └── readout.tsx        The figure a step builds toward
 │   ├── steps/
-│   │   ├── step-place.tsx     1 · State & filing status
-│   │   ├── step-income.tsx    2 · Income & expenses
+│   │   ├── step-place.tsx     1 · State, filing status & dependents
+│   │   ├── step-income.tsx    2 · Income by source & expenses
 │   │   ├── step-tax.tsx       3 · The bill, and the call to give
 │   │   ├── step-giving.tsx    4 · Donation + khums coverage verdict
 │   │   └── step-results.tsx   5 · Verdict, chart, and the detail below
@@ -113,7 +126,7 @@ Keep the source files in IRS convention. Values can then be pasted straight from
 
 ### Data file shape
 
-`federal_tax.json` nests each filing status under `ordinary_income_tax.filing_statuses`, and additionally carries long-term capital gains brackets, NIIT thresholds, Additional Medicare Tax thresholds, and the personal exemption. Only the ordinary-income section and the charitable ceiling are wired into the calculator today; the rest is typed and loadable but unused.
+`federal_tax.json` nests each filing status under `ordinary_income_tax.filing_statuses`, and additionally carries long-term capital gains brackets, NIIT thresholds, Additional Medicare Tax thresholds, self-employment and FICA rates, the Child Tax Credit schedule, and the personal exemption. All of these are wired into the engine; only the personal exemption sits unused, and it is $0 by statute anyway.
 
 `state_tax.json` is an object keyed by postal code, holding **single-filer schedules only**:
 
@@ -179,7 +192,10 @@ Tax saved: **$6,260**. Real cost of the $20,000 gift: **$13,740** — an effecti
 
 This is an educational estimator, not tax or religious advice.
 
-- **Ordinary income only.** No payroll or self-employment tax, AMT, QBI deduction, credits, or deduction phaseouts. The data file now carries long-term capital gains brackets, the 3.8% NIIT, and the 0.9% Additional Medicare Tax, but the calculator does not apply them.
+- **No QBI deduction.** Section 199A can shelter up to 20% of qualified business income, and it is not modeled — so self-employed filers will see federal tax *overstated*. This is the largest remaining gap.
+- **No AMT, and no credits beyond the dependent ones.** No EITC, education, energy, or foreign tax credits; no deduction phaseouts other than the CTC's.
+- **The Additional Child Tax Credit is not refunded.** Dependent credits reduce tax to zero and stop, so a low-income filer's refund is understated rather than overstated.
+- **Business losses do not offset other income.** If expenses exceed self-employment revenue the business simply contributes zero, rather than reducing wage income.
 - **State brackets are single-filer schedules, applied to every filing status.** The dataset carries no married-filing-jointly thresholds, which are wider in many states — joint filers will see state tax overstated.
 - **No state standard deductions or exemptions.** The dataset omits them, so state taxable income is the full net profit less any deductible gift. Real state bills will generally be lower.
 - **State income tax only.** City and county income taxes are excluded — NYC and Yonkers, Maryland counties, Ohio municipalities, Indiana counties, Pennsylvania local EIT.

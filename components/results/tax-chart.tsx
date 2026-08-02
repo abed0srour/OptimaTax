@@ -62,9 +62,11 @@ export function TaxChart({ comparison }: { comparison: TaxComparison }) {
 
         <div className="space-y-4">
           {rows.map((row) => {
-            const { totalTax, federal, state } = row.scenario;
+            const { totalTax, totalFederalTax, state } = row.scenario;
+            // Every federal tax, not just the bracket tax — otherwise the
+            // segments would not add up to the total printed above them.
             const segments = [
-              { ...SERIES[0], value: federal.tax },
+              { ...SERIES[0], value: totalFederalTax },
               { ...SERIES[1], value: state.tax },
             ].filter((segment) => segment.value > 0);
 
@@ -132,7 +134,7 @@ export function TaxChart({ comparison }: { comparison: TaxComparison }) {
                 <TableRow key={row.key}>
                   <TableCell className="py-2">{row.title}</TableCell>
                   <TableCell className="tnum py-2 text-right">
-                    {formatCurrency(row.scenario.federal.tax)}
+                    {formatCurrency(row.scenario.totalFederalTax)}
                   </TableCell>
                   <TableCell className="tnum py-2 text-right">
                     {formatCurrency(row.scenario.state.tax)}

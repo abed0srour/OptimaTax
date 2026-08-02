@@ -9,6 +9,7 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { BracketTable } from "@/components/results/bracket-table";
+import { FederalBreakdown } from "@/components/results/federal-breakdown";
 import { KhumsCoverage } from "@/components/results/khums-coverage";
 import { TaxChart } from "@/components/results/tax-chart";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -80,6 +81,9 @@ export function StepResults({
       ) : null}
 
       <div className="space-y-2">
+        <FederalBreakdown
+          scenario={better ? scenarioB : comparison.scenarioA}
+        />
         <BracketTable
           title="Federal brackets"
           icon={<Landmark />}

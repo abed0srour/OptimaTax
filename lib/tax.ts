@@ -1,4 +1,5 @@
 import {
+  capitalGainsBrackets,
   federalBrackets,
   federalStandardDeduction,
   federalTax,
@@ -9,11 +10,15 @@ import type {
   BracketSlice,
   BracketTarget,
   CalculatorInput,
+  CreditBreakdown,
   DeductionMode,
+  Dependents,
   FilingStatus,
+  IncomeSources,
   KhumsBreakdown,
   ProgressiveResult,
   ScenarioBreakdown,
+  SelfEmploymentTax,
   StateTaxEntry,
   TaxComparison,
 } from "./types";
@@ -26,6 +31,14 @@ const EMPTY_RESULT: ProgressiveResult = {
   slices: [],
   effectiveRate: 0,
   marginalRate: 0,
+};
+
+const NO_SE_TAX: SelfEmploymentTax = {
+  netEarnings: 0,
+  socialSecurity: 0,
+  medicare: 0,
+  total: 0,
+  deductiblePortion: 0,
 };
 
 const clampToZero = (n: number) => (Number.isFinite(n) && n > 0 ? n : 0);
@@ -75,6 +88,54 @@ export function calculateProgressiveTax(
   };
 }
 
+/**
+ * Taxes a band of income that sits *on top of* something else.
+ *
+ * Long-term gains do not get their own private schedule starting at zero: the
+ * 0/15/20% thresholds are measured against total taxable income, so ordinary
+ * income underneath pushes the gains up into higher gain brackets. `floor` is
+ * that ordinary income; only the band above it is taxed here.
+ */
+export function calculateStackedTax(
+  amount: number,
+  floor: number,
+  brackets: Bracket[],
+): ProgressiveResult {
+  const band = clampToZero(amount);
+  const base = clampToZero(floor);
+  if (band <= 0 || !brackets.length) return EMPTY_RESULT;
+
+  const top = base + band;
+  const slices: BracketSlice[] = [];
+  let tax = 0;
+
+  for (const bracket of brackets) {
+    const ceiling = bracket.max ?? Infinity;
+    const low = Math.max(bracket.min, base);
+    const high = Math.min(ceiling, top);
+    const amountInBracket = high - low;
+    if (amountInBracket <= 0) continue;
+
+    const bracketTax = amountInBracket * bracket.rate;
+    tax += bracketTax;
+    slices.push({
+      rate: bracket.rate,
+      min: bracket.min,
+      max: bracket.max,
+      amountInBracket,
+      tax: bracketTax,
+    });
+  }
+
+  const topSlice = slices[slices.length - 1];
+  return {
+    tax,
+    slices,
+    effectiveRate: band > 0 ? tax / band : 0,
+    marginalRate: topSlice?.rate ?? brackets[0].rate,
+  };
+}
+
 /** Federal ordinary income tax for a filing status, from `data/federal_tax.json`. */
 export function calculateFederalTax(
   taxableIncome: number,
@@ -113,9 +174,134 @@ export function calculateStateTax(
   }
 }
 
-/** Net profit / net savings — the pool both the tax and the khums sit on top of. */
-export function calculateNetProfit(totalIncome: number, expenses: number): number {
-  return clampToZero(clampToZero(totalIncome) - clampToZero(expenses));
+// ------------------------------------------------------------ payroll taxes
+
+/** Self-employment profit: 1099 / business revenue less the year's expenses. */
+export function calculateSelfEmploymentProfit(
+  income: IncomeSources,
+  expenses: number,
+): number {
+  return clampToZero(clampToZero(income.selfEmployment) - clampToZero(expenses));
+}
+
+/**
+ * SECA — the self-employed equivalent of both halves of FICA.
+ *
+ * `wages` matters because the Social Security cap is shared: W-2 wages fill it
+ * first, and only what is left of the base is available to SE earnings.
+ */
+export function calculateSelfEmploymentTax(
+  selfEmploymentProfit: number,
+  wages: number,
+): SelfEmploymentTax {
+  const config = federalTax.self_employment_tax;
+  const netEarnings = clampToZero(selfEmploymentProfit) * config.net_earnings_factor;
+  if (netEarnings < config.minimum_net_earnings) return NO_SE_TAX;
+
+  const baseLeft = clampToZero(
+    config.social_security_wage_base - clampToZero(wages),
+  );
+  const socialSecurity = Math.min(netEarnings, baseLeft) * config.social_security_rate;
+  const medicare = netEarnings * config.medicare_rate;
+  const total = socialSecurity + medicare;
+
+  return {
+    netEarnings,
+    socialSecurity,
+    medicare,
+    total,
+    deductiblePortion: total / 2,
+  };
+}
+
+/** The employee's own FICA on W-2 wages. The employer's match is not your cost. */
+export function calculateFicaWithheld(wages: number): number {
+  const config = federalTax.fica_employee;
+  const base = federalTax.self_employment_tax.social_security_wage_base;
+  const paid = clampToZero(wages);
+
+  return (
+    Math.min(paid, base) * config.social_security_rate +
+    paid * config.medicare_rate
+  );
+}
+
+/** 0.9% on wages plus SE earnings above a statutory, non-indexed threshold. */
+export function calculateAdditionalMedicare(
+  earnedIncome: number,
+  status: FilingStatus,
+): number {
+  const config = federalTax.additional_medicare_tax;
+  const excess = clampToZero(
+    clampToZero(earnedIncome) - config.wage_thresholds[status],
+  );
+  return excess * config.rate;
+}
+
+/** 3.8% on the lesser of investment income or the MAGI overage. */
+export function calculateNetInvestmentIncomeTax(
+  investmentIncome: number,
+  magi: number,
+  status: FilingStatus,
+): number {
+  const config = federalTax.net_investment_income_tax;
+  const overage = clampToZero(clampToZero(magi) - config.magi_thresholds[status]);
+  return Math.min(clampToZero(investmentIncome), overage) * config.rate;
+}
+
+// ---------------------------------------------------------------- credits
+
+/**
+ * Child Tax Credit plus the Other Dependent Credit, phased out on MAGI.
+ *
+ * Modelled as non-refundable: it reduces tax to zero and stops. The refundable
+ * Additional Child Tax Credit is deliberately not paid out here, so the figure
+ * is never optimistic.
+ */
+export function calculateChildTaxCredit(
+  dependents: Dependents,
+  magi: number,
+  status: FilingStatus,
+  incomeTax: number,
+): CreditBreakdown {
+  const config = federalTax.child_tax_credit;
+  const children = Math.max(0, Math.floor(dependents.qualifyingChildren));
+  const others = Math.max(0, Math.floor(dependents.otherDependents));
+
+  const gross =
+    children * config.amount_per_child + others * config.other_dependent_credit;
+  if (gross <= 0) return { gross: 0, phasedOut: 0, available: 0, applied: 0 };
+
+  // "Each $1,000 or fraction thereof" — hence the ceiling rather than a ratio.
+  const excess = clampToZero(clampToZero(magi) - config.magi_thresholds[status]);
+  const steps = Math.ceil(excess / config.phaseout_step);
+  const phasedOut = Math.min(gross, steps * config.phaseout_per);
+
+  const available = gross - phasedOut;
+  return {
+    gross,
+    phasedOut,
+    available,
+    applied: Math.min(available, clampToZero(incomeTax)),
+  };
+}
+
+// ---------------------------------------------------------------- the engine
+
+/**
+ * Total income after business expenses — the pool the khums sits on and the
+ * headline "what you made this year" figure.
+ */
+export function calculateNetProfit(
+  income: IncomeSources,
+  expenses: number,
+): number {
+  return (
+    clampToZero(income.wages) +
+    calculateSelfEmploymentProfit(income, expenses) +
+    clampToZero(income.otherInvestmentIncome) +
+    clampToZero(income.longTermCapitalGains)
+  );
 }
 
 /** 1/5 of net profit, and how far the donation goes toward covering it. */
@@ -151,42 +337,60 @@ function totalDeduction(
     : Math.max(standardDeduction, donation);
 }
 
+/** AGI is independent of the charitable gift, so it is computed once up front. */
+function calculateAgi(
+  income: IncomeSources,
+  expenses: number,
+  selfEmploymentTax: SelfEmploymentTax,
+): number {
+  return clampToZero(
+    calculateNetProfit(income, expenses) - selfEmploymentTax.deductiblePortion,
+  );
+}
+
 /**
- * How much more to give, from what's already entered, to drop federal taxable
- * income down to the floor of the bracket it currently sits in — the point
- * past which further giving still saves tax, just at the next lower rate.
+ * How much more to give, from what's already entered, to drop the *ordinary*
+ * taxable income down to the floor of the bracket it currently sits in.
  *
- * Federal only: state schedules have their own, unrelated breakpoints.
+ * Federal ordinary rates only: state schedules have their own breakpoints, and
+ * long-term gains ride their own 0/15/20% table.
  */
 export function calculateBracketTarget(
-  netProfit: number,
+  input: CalculatorInput,
   donation: number,
-  status: FilingStatus,
-  mode: DeductionMode,
 ): BracketTarget | null {
-  const brackets = federalBrackets(status);
-  const standardDeduction = federalStandardDeduction(status);
+  const { income, expenses, filingStatus, deductionMode } = input;
+
+  const brackets = federalBrackets(filingStatus);
+  const standardDeduction = federalStandardDeduction(filingStatus);
   const givenDonation = clampToZero(donation);
+
+  const seProfit = calculateSelfEmploymentProfit(income, expenses);
+  const seTax = calculateSelfEmploymentTax(seProfit, clampToZero(income.wages));
+  const agi = calculateAgi(income, expenses, seTax);
+  const gains = clampToZero(income.longTermCapitalGains);
+
   const taxableIncome = clampToZero(
-    netProfit - totalDeduction(standardDeduction, givenDonation, mode),
+    agi - totalDeduction(standardDeduction, givenDonation, deductionMode),
   );
+  const ordinaryTaxable = clampToZero(taxableIncome - Math.min(gains, taxableIncome));
 
   let bracketIndex = 0;
   brackets.forEach((bracket, index) => {
-    if (taxableIncome > bracket.min) bracketIndex = index;
+    if (ordinaryTaxable > bracket.min) bracketIndex = index;
   });
   if (bracketIndex === 0) return null; // already in the lowest bracket
 
   const currentBracket = brackets[bracketIndex];
   const targetBracket = brackets[bracketIndex - 1];
-  const bracketFloor = currentBracket.min;
 
-  // Total donation (not just the increment) that lands taxable income right
-  // at the current bracket's floor.
+  // Deductions come off ordinary income before they touch the gains stacked on
+  // top, so the gift has to erase everything between the floor and AGI-less-gains.
+  const deductionNeeded = agi - gains - currentBracket.min;
   const targetDonation =
-    mode === "stacked"
-      ? netProfit - bracketFloor - standardDeduction
-      : netProfit - bracketFloor;
+    deductionMode === "stacked"
+      ? deductionNeeded - standardDeduction
+      : deductionNeeded;
 
   const additionalDonationNeeded = clampToZero(targetDonation - givenDonation);
   if (additionalDonationNeeded <= 0) return null;
@@ -201,34 +405,93 @@ export function calculateBracketTarget(
 
 function buildScenario(
   label: string,
-  netProfit: number,
+  input: CalculatorInput,
   donation: number,
-  status: FilingStatus,
   state: StateTaxEntry,
-  mode: DeductionMode,
 ): ScenarioBreakdown {
+  const { income, expenses, filingStatus, deductionMode, dependents } = input;
+
+  const wages = clampToZero(income.wages);
+  const gains = clampToZero(income.longTermCapitalGains);
+  const investment = clampToZero(income.otherInvestmentIncome);
+
+  const seProfit = calculateSelfEmploymentProfit(income, expenses);
+  const selfEmployment = calculateSelfEmploymentTax(seProfit, wages);
+  const ficaWithheld = calculateFicaWithheld(wages);
+
+  const grossIncome = calculateNetProfit(income, expenses);
+  const agi = calculateAgi(income, expenses, selfEmployment);
+
   const federalTaxableIncome = clampToZero(
-    netProfit - totalDeduction(federalStandardDeduction(status), donation, mode),
+    agi - totalDeduction(federalStandardDeduction(filingStatus), donation, deductionMode),
   );
+
+  // Gains sit on top: deductions eat ordinary income first, and whatever gains
+  // survive are taxed at preferential rates from the ordinary income upward.
+  const gainsTaxableIncome = Math.min(gains, federalTaxableIncome);
+  const ordinaryTaxableIncome = federalTaxableIncome - gainsTaxableIncome;
+
+  const federal = calculateFederalTax(ordinaryTaxableIncome, filingStatus);
+  const capitalGains = calculateStackedTax(
+    gainsTaxableIncome,
+    ordinaryTaxableIncome,
+    capitalGainsBrackets(filingStatus),
+  );
+
+  const incomeTaxBeforeCredits = federal.tax + capitalGains.tax;
+  const credits = calculateChildTaxCredit(
+    dependents,
+    agi,
+    filingStatus,
+    incomeTaxBeforeCredits,
+  );
+  const federalIncomeTax = clampToZero(incomeTaxBeforeCredits - credits.applied);
+
+  const additionalMedicare = calculateAdditionalMedicare(
+    wages + selfEmployment.netEarnings,
+    filingStatus,
+  );
+  const netInvestmentIncomeTax = calculateNetInvestmentIncomeTax(
+    gains + investment,
+    agi,
+    filingStatus,
+  );
+
+  const totalFederalTax =
+    federalIncomeTax +
+    selfEmployment.total +
+    ficaWithheld +
+    additionalMedicare +
+    netInvestmentIncomeTax;
 
   // The 2026 state dataset carries no standard deductions or exemptions, so the
   // only subtraction available at state level is the gift itself — and only in
   // states that allow a charitable deduction at all.
   const stateDonation = state.allowsCharitableDeduction ? donation : 0;
-  const stateTaxableIncome = clampToZero(netProfit - stateDonation);
-
-  const federal = calculateFederalTax(federalTaxableIncome, status);
+  const stateTaxableIncome = clampToZero(agi - stateDonation);
   const stateResult = calculateStateTax(stateTaxableIncome, state);
-  const totalTax = federal.tax + stateResult.tax;
-  const afterTaxIncome = netProfit - totalTax;
+
+  const totalTax = totalFederalTax + stateResult.tax;
+  const afterTaxIncome = grossIncome - totalTax;
 
   return {
     label,
     donationApplied: donation,
+    agi,
     federalTaxableIncome,
     stateTaxableIncome,
+    ordinaryTaxableIncome,
+    gainsTaxableIncome,
     federal,
+    capitalGains,
     state: stateResult,
+    selfEmployment,
+    ficaWithheld,
+    additionalMedicare,
+    netInvestmentIncomeTax,
+    credits,
+    federalIncomeTax,
+    totalFederalTax,
     totalTax,
     afterTaxIncome,
     retainedAfterGiving: afterTaxIncome - donation,
@@ -240,10 +503,8 @@ function buildScenario(
  * optimization metrics that compare them. Pure — safe to run on every keystroke.
  */
 export function buildComparison(input: CalculatorInput): TaxComparison {
-  const { totalIncome, expenses, filingStatus, stateCode, deductionMode } = input;
-
-  const state = getState(stateCode);
-  const netProfit = calculateNetProfit(totalIncome, expenses);
+  const state = getState(input.stateCode);
+  const netProfit = calculateNetProfit(input.income, input.expenses);
   const donationEntered = clampToZero(input.donation);
 
   // IRC 170(b)(1)(A): cash gifts to public charities are deductible only up to
@@ -252,22 +513,8 @@ export function buildComparison(input: CalculatorInput): TaxComparison {
     netProfit * federalTax.charitable_deduction_limits.cash_public_charity_agi_limit;
   const deductibleDonation = Math.min(donationEntered, agiLimitAmount);
 
-  const scenarioA = buildScenario(
-    "Without donation",
-    netProfit,
-    0,
-    filingStatus,
-    state,
-    deductionMode,
-  );
-  const scenarioB = buildScenario(
-    "With donation",
-    netProfit,
-    deductibleDonation,
-    filingStatus,
-    state,
-    deductionMode,
-  );
+  const scenarioA = buildScenario("Without donation", input, 0, state);
+  const scenarioB = buildScenario("With donation", input, deductibleDonation, state);
 
   // Scenario B keeps the *entered* donation out of pocket even though only the
   // deductible slice reduces tax, so restate what the giver actually retains.
@@ -282,12 +529,7 @@ export function buildComparison(input: CalculatorInput): TaxComparison {
     donationCarryforward: donationEntered - deductibleDonation,
     agiLimitAmount,
     khums: calculateKhums(netProfit, donationEntered),
-    bracketTarget: calculateBracketTarget(
-      netProfit,
-      donationEntered,
-      filingStatus,
-      deductionMode,
-    ),
+    bracketTarget: calculateBracketTarget(input, donationEntered),
     scenarioA,
     scenarioB,
     taxSavings,

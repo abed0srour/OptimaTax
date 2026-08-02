@@ -1,6 +1,6 @@
 {
   "tax_year": 2026,
-  "source": "IRS Revenue Procedure 2025-32 (published Oct 9, 2025); verified against IRS.gov newsroom release",
+  "source": "IRS Revenue Procedure 2025-32 (published Oct 9, 2025); verified against IRS.gov newsroom release. Social Security wage base per SSA's Oct 2025 announcement.",
   "notes": "All bracket thresholds are TAXABLE income (after standard/itemized deductions), not gross income. Rates apply to income earned Jan 1 - Dec 31, 2026, reported on returns filed in early 2027. Bracket `min` values follow the IRS table convention (one dollar above the previous `max`); the loader in lib/taxData.ts snaps them down to the previous `max` so no dollar falls through a boundary.",
 
   "ordinary_income_tax": {
@@ -121,6 +121,39 @@
   "personal_exemption": {
     "amount": 0,
     "notes": "Eliminated by the Tax Cuts and Jobs Act (2017) and made permanent at $0 by the One Big Beautiful Bill Act (OBBBA)."
+  },
+
+  "self_employment_tax": {
+    "name": "Self-Employment Tax (SECA)",
+    "notes": "IRC 1401/1402. Charged on `net_earnings_factor` of net self-employment profit. The Social Security portion is capped at `social_security_wage_base`, and W-2 wages consume that cap first; the Medicare portion is uncapped. Half the resulting tax is deductible above the line under IRC 164(f). No tax is due if net earnings fall below `minimum_net_earnings`.",
+    "net_earnings_factor": 0.9235,
+    "social_security_rate": 0.124,
+    "medicare_rate": 0.029,
+    "social_security_wage_base": 184500,
+    "minimum_net_earnings": 400
+  },
+
+  "fica_employee": {
+    "name": "FICA (employee share)",
+    "notes": "Withheld from W-2 wages under IRC 3101. The employer pays a matching share, which is not the employee's cost and is not counted here. Social Security stops at the same wage base as SECA.",
+    "social_security_rate": 0.062,
+    "medicare_rate": 0.0145
+  },
+
+  "child_tax_credit": {
+    "name": "Child Tax Credit",
+    "notes": "IRC 24 as amended by OBBBA, per Rev. Proc. 2025-32. Non-refundable against income tax; up to `refundable_limit` per child can be refundable as the Additional Child Tax Credit, which this calculator does NOT pay out — it only reduces tax to zero. Reduced by `phaseout_per` for each `phaseout_step` of MAGI (or fraction of one) above the threshold. `other_dependent_credit` covers dependents who are not qualifying children and is never refundable.",
+    "amount_per_child": 2200,
+    "refundable_limit": 1700,
+    "other_dependent_credit": 500,
+    "phaseout_step": 1000,
+    "phaseout_per": 50,
+    "magi_thresholds": {
+      "single": 200000,
+      "married_joint": 400000,
+      "head_of_household": 200000,
+      "married_separate": 200000
+    }
   },
 
   "charitable_deduction_limits": {

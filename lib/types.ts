@@ -60,6 +60,31 @@ export interface FederalTaxData {
     notes: string;
     cash_public_charity_agi_limit: number;
   };
+  self_employment_tax: {
+    name: string;
+    notes: string;
+    net_earnings_factor: number;
+    social_security_rate: number;
+    medicare_rate: number;
+    social_security_wage_base: number;
+    minimum_net_earnings: number;
+  };
+  fica_employee: {
+    name: string;
+    notes: string;
+    social_security_rate: number;
+    medicare_rate: number;
+  };
+  child_tax_credit: {
+    name: string;
+    notes: string;
+    amount_per_child: number;
+    refundable_limit: number;
+    other_dependent_credit: number;
+    phaseout_step: number;
+    phaseout_per: number;
+    magi_thresholds: Record<FilingStatus, number>;
+  };
 }
 
 export interface RawStateEntry {
@@ -115,16 +140,79 @@ export interface ProgressiveResult {
   marginalRate: number;
 }
 
+/**
+ * Where a year's money came from. Each source is taxed differently, so they
+ * cannot be collapsed into one figure without changing the answer.
+ */
+export interface IncomeSources {
+  /** W-2 wages. FICA is withheld at source; ordinary rates for income tax. */
+  wages: number;
+  /** Gross 1099 / business revenue, before expenses. Carries SE tax. */
+  selfEmployment: number;
+  /** Long-term gains and qualified dividends — preferential 0/15/20% rates. */
+  longTermCapitalGains: number;
+  /** Interest, non-qualified dividends, short-term gains. Ordinary rates, and
+   *  investment income for NIIT purposes. */
+  otherInvestmentIncome: number;
+}
+
+export interface Dependents {
+  /** Under 17 at year end — worth the full Child Tax Credit. */
+  qualifyingChildren: number;
+  /** Everyone else you claim — worth the smaller Other Dependent Credit. */
+  otherDependents: number;
+}
+
+/** The payroll-style taxes that sit outside the income-tax brackets. */
+export interface SelfEmploymentTax {
+  /** 92.35% of net SE profit — the base the rates actually apply to. */
+  netEarnings: number;
+  socialSecurity: number;
+  medicare: number;
+  total: number;
+  /** Half the total, deductible above the line under IRC 164(f). */
+  deductiblePortion: number;
+}
+
+export interface CreditBreakdown {
+  /** Credit earned before the income phaseout. */
+  gross: number;
+  /** Amount lost to the MAGI phaseout. */
+  phasedOut: number;
+  /** Credit surviving the phaseout, before the income-tax ceiling. */
+  available: number;
+  /** Actually subtracted — a non-refundable credit cannot pass zero tax. */
+  applied: number;
+}
+
 export interface ScenarioBreakdown {
   label: string;
   /** Charitable amount actually subtracted before tax in this scenario. */
   donationApplied: number;
+  /** Adjusted gross income: every source, less the deductible half of SE tax. */
+  agi: number;
   federalTaxableIncome: number;
   stateTaxableIncome: number;
+  /** Taxable income taxed at ordinary rates (total less the gains on top). */
+  ordinaryTaxableIncome: number;
+  /** Taxable income taxed at preferential long-term gains rates. */
+  gainsTaxableIncome: number;
   federal: ProgressiveResult;
+  /** Tax on the long-term gains slice, stacked above ordinary income. */
+  capitalGains: ProgressiveResult;
   state: ProgressiveResult;
+  selfEmployment: SelfEmploymentTax;
+  /** FICA withheld from W-2 wages — the employee share only. */
+  ficaWithheld: number;
+  additionalMedicare: number;
+  netInvestmentIncomeTax: number;
+  credits: CreditBreakdown;
+  /** Federal income tax after credits, excluding SE/NIIT/Medicare surtaxes. */
+  federalIncomeTax: number;
+  /** Every federal tax added together. */
+  totalFederalTax: number;
   totalTax: number;
-  /** Net profit minus total tax, before the donation leaves your hands. */
+  /** Total income minus total tax, before the donation leaves your hands. */
   afterTaxIncome: number;
   /** What you actually retain: after-tax income minus the donation you gave. */
   retainedAfterGiving: number;
@@ -186,10 +274,12 @@ export interface TaxComparison {
 export type DeductionMode = "stacked" | "itemized";
 
 export interface CalculatorInput {
-  totalIncome: number;
+  income: IncomeSources;
+  /** Business expenses, deducted from self-employment revenue only. */
   expenses: number;
   donation: number;
   filingStatus: FilingStatus;
   stateCode: string;
   deductionMode: DeductionMode;
+  dependents: Dependents;
 }

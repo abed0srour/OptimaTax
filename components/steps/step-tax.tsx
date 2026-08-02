@@ -53,13 +53,52 @@ export function StepTax({
         tone="tax"
       />
 
+      {/*
+       * Only the lines that carry a figure. A W-2 filer never sees a $0
+       * self-employment row, and a freelancer never sees a $0 FICA row.
+       */}
       <dl className="space-y-3">
-        <Line label="Federal income tax" value={scenario.federal.tax} />
+        <Line label="Federal income tax" value={scenario.federalIncomeTax} />
+
+        {scenario.credits.applied > 0 ? (
+          <Line
+            label="Dependent credits"
+            value={-scenario.credits.applied}
+            tone="credit"
+          />
+        ) : null}
+
+        {scenario.selfEmployment.total > 0 ? (
+          <Line
+            label="Self-employment tax"
+            value={scenario.selfEmployment.total}
+          />
+        ) : null}
+
+        {scenario.ficaWithheld > 0 ? (
+          <Line label="FICA withheld" value={scenario.ficaWithheld} />
+        ) : null}
+
+        {scenario.additionalMedicare > 0 ? (
+          <Line
+            label="Additional Medicare tax"
+            value={scenario.additionalMedicare}
+          />
+        ) : null}
+
+        {scenario.netInvestmentIncomeTax > 0 ? (
+          <Line
+            label="Net investment income tax"
+            value={scenario.netInvestmentIncomeTax}
+          />
+        ) : null}
+
         <Line
           label={`${stateEntry.name} income tax`}
           value={scenario.state.tax}
           muted={stateEntry.tax_type === "none"}
         />
+
         <div className="flex items-baseline justify-between gap-3 border-t border-border pt-3">
           <dt className="min-w-0 text-[0.9rem] font-semibold">
             Net income after tax
@@ -112,11 +151,16 @@ function Line({
   label,
   value,
   muted = false,
+  tone = "default",
 }: {
   label: string;
   value: number;
   muted?: boolean;
+  /** `credit` renders a reduction — shown as a negative, in the keep colour. */
+  tone?: "default" | "credit";
 }) {
+  const isCredit = tone === "credit";
+
   return (
     <div className="flex items-baseline justify-between gap-3">
       <dt className="min-w-0 text-[0.9rem] text-foreground/80">{label}</dt>
@@ -124,9 +168,14 @@ function Line({
         className={cn(
           "tnum shrink-0 font-medium whitespace-nowrap",
           muted && "text-muted-foreground",
+          isCredit && "text-keep-ink",
         )}
       >
-        {muted ? "None" : formatCurrency(value)}
+        {muted
+          ? "None"
+          : isCredit
+            ? `−${formatCurrency(Math.abs(value))}`
+            : formatCurrency(value)}
       </dd>
     </div>
   );
