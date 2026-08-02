@@ -74,6 +74,15 @@ export function FederalBreakdown({ scenario }: { scenario: ScenarioBreakdown }) 
           to the income phaseout.
         </p>
       ) : null}
+
+      {scenario.socialSecurity.benefits > 0 ? (
+        <p className="mt-3 text-[0.8rem] leading-relaxed text-muted-foreground">
+          {Math.round(scenario.socialSecurity.taxableShare * 100)}% of your{" "}
+          {formatCurrency(scenario.socialSecurity.benefits)} in Social Security
+          benefits is taxable —{" "}
+          {formatCurrency(scenario.socialSecurity.taxable)}.
+        </p>
+      ) : null}
     </Disclosure>
   );
 }

@@ -85,6 +85,15 @@ export interface FederalTaxData {
     phaseout_per: number;
     magi_thresholds: Record<FilingStatus, number>;
   };
+  social_security_benefits: {
+    name: string;
+    notes: string;
+    base_amounts: Record<FilingStatus, number>;
+    adjusted_base_amounts: Record<FilingStatus, number>;
+    adjustment_amounts: Record<FilingStatus, number>;
+    lower_tier_rate: number;
+    upper_tier_rate: number;
+  };
 }
 
 export interface RawStateEntry {
@@ -141,19 +150,58 @@ export interface ProgressiveResult {
 }
 
 /**
- * Where a year's money came from. Each source is taxed differently, so they
- * cannot be collapsed into one figure without changing the answer.
+ * Where a year's money came from, grouped by *tax treatment* rather than by
+ * form number — several forms can share a treatment, and one form (1099-DIV)
+ * can straddle two. Collapsing these into one figure would change the answer.
  */
 export interface IncomeSources {
-  /** W-2 wages. FICA is withheld at source; ordinary rates for income tax. */
+  // — Earned income: ordinary rates, and payroll tax on top ——————————————
+
+  /** W-2 wages. FICA withheld at source; ordinary rates for income tax. */
   wages: number;
-  /** Gross 1099 / business revenue, before expenses. Carries SE tax. */
+  /** Gross 1099-NEC / Schedule C revenue, before expenses. Carries SE tax. */
   selfEmployment: number;
-  /** Long-term gains and qualified dividends — preferential 0/15/20% rates. */
-  longTermCapitalGains: number;
-  /** Interest, non-qualified dividends, short-term gains. Ordinary rates, and
-   *  investment income for NIIT purposes. */
+
+  // — Ordinary rates, no payroll tax ——————————————————————————————————
+
+  /** 1099-R: IRA, 401(k) and pension distributions. */
+  retirementDistributions: number;
+  /** 1099-G unemployment compensation. */
+  unemployment: number;
+  /** Alimony (pre-2019 decrees), gambling, prizes, other ordinary receipts. */
+  otherOrdinaryIncome: number;
+
+  // — Passive & investment: ordinary rates, but inside the NIIT base ————
+
+  /** Schedule E rental and royalty income, net of its own expenses. */
+  rentalRoyalty: number;
+  /** 1099-INT interest, ordinary 1099-DIV dividends, short-term gains. */
   otherInvestmentIncome: number;
+
+  // — Preferential rates ————————————————————————————————————————————
+
+  /** Long-term gains and qualified dividends — the 0/15/20% table. */
+  longTermCapitalGains: number;
+
+  // — Special treatment ——————————————————————————————————————————————
+
+  /** SSA-1099 gross benefits. Only a formula-determined share is taxable. */
+  socialSecurityBenefits: number;
+  /** Municipal bond interest: untaxed federally, but it still counts toward
+   *  the Social Security provisional-income test. */
+  taxExemptInterest: number;
+}
+
+/** How much of the year's Social Security benefits ended up being taxable. */
+export interface SocialSecurityTaxability {
+  /** Benefits received, at face value. */
+  benefits: number;
+  /** AGI excluding benefits, plus tax-exempt interest, plus half the benefits. */
+  provisionalIncome: number;
+  /** The portion that lands in taxable income. */
+  taxable: number;
+  /** 0–1 share of benefits that turned out to be taxable. */
+  taxableShare: number;
 }
 
 export interface Dependents {
@@ -202,6 +250,7 @@ export interface ScenarioBreakdown {
   capitalGains: ProgressiveResult;
   state: ProgressiveResult;
   selfEmployment: SelfEmploymentTax;
+  socialSecurity: SocialSecurityTaxability;
   /** FICA withheld from W-2 wages — the employee share only. */
   ficaWithheld: number;
   additionalMedicare: number;

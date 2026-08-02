@@ -26,8 +26,14 @@ const STEPS: StepMeta[] = [
 const EMPTY_INCOME: IncomeText = {
   wages: "",
   selfEmployment: "",
-  longTermCapitalGains: "",
+  retirementDistributions: "",
+  unemployment: "",
+  otherOrdinaryIncome: "",
+  rentalRoyalty: "",
   otherInvestmentIncome: "",
+  longTermCapitalGains: "",
+  socialSecurityBenefits: "",
+  taxExemptInterest: "",
 };
 
 const DEFAULTS = {
@@ -60,8 +66,14 @@ export default function Home() {
     () => ({
       wages: parseMoney(incomeText.wages),
       selfEmployment: parseMoney(incomeText.selfEmployment),
-      longTermCapitalGains: parseMoney(incomeText.longTermCapitalGains),
+      retirementDistributions: parseMoney(incomeText.retirementDistributions),
+      unemployment: parseMoney(incomeText.unemployment),
+      otherOrdinaryIncome: parseMoney(incomeText.otherOrdinaryIncome),
+      rentalRoyalty: parseMoney(incomeText.rentalRoyalty),
       otherInvestmentIncome: parseMoney(incomeText.otherInvestmentIncome),
+      longTermCapitalGains: parseMoney(incomeText.longTermCapitalGains),
+      socialSecurityBenefits: parseMoney(incomeText.socialSecurityBenefits),
+      taxExemptInterest: parseMoney(incomeText.taxExemptInterest),
     }),
     [incomeText],
   );

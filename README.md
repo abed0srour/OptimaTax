@@ -26,16 +26,24 @@ The screens carry no explanatory prose — the controls and their live figures a
 
 ## What it does
 
-**Total income** — W-2 wages, self-employment profit (`1099 revenue − business expenses`), long-term capital gains, and other investment income. This is the pool everything else sits on.
+**Total income** — every source below at face value, less business expenses. Note this deliberately includes money the IRS never taxes (municipal interest, the untaxed share of Social Security): khums is owed on real surplus, not on taxable income, so the khums base and AGI are different figures on purpose.
 
 **Income taxed by source, not in aggregate**, because each obeys a different rule:
 
-| Source | What it carries |
-| --- | --- |
-| W-2 wages | Ordinary brackets + the employee half of FICA (6.2% + 1.45%, Social Security capped at the wage base) |
-| Self-employment / 1099 | Ordinary brackets + SECA at 15.3% on 92.35% of profit; half of it deducted above the line. W-2 wages fill the Social Security cap first |
-| Long-term gains & qualified dividends | The 0/15/20% table, *stacked on top of* ordinary income — so ordinary earnings push gains into higher gain brackets |
-| Interest, ordinary dividends, short-term gains | Ordinary brackets, and counted as investment income for NIIT |
+| Source | Form | What it carries |
+| --- | --- | --- |
+| Wages | W-2 | Ordinary brackets + the employee half of FICA (6.2% + 1.45%, Social Security capped at the wage base) |
+| Self-employment | 1099-NEC / Sch C | Ordinary brackets + SECA at 15.3% on 92.35% of profit; half of it deducted above the line. W-2 wages fill the Social Security cap first |
+| Retirement distributions | 1099-R | Ordinary brackets. No payroll tax, and **excluded from the NIIT base** by IRC 1411(c) |
+| Unemployment | 1099-G | Ordinary brackets, no payroll tax |
+| Alimony, gambling, prizes | various | Ordinary brackets, no payroll tax |
+| Rental & royalty | Sch E | Ordinary brackets, no SE tax, but **inside the NIIT base** |
+| Interest, ordinary dividends, short-term gains | 1099-INT / 1099-DIV / 1099-B | Ordinary brackets, inside the NIIT base |
+| Long-term gains & qualified dividends | 1099-B / 1099-DIV | The 0/15/20% table, *stacked on top of* ordinary income — so ordinary earnings push gains into higher gain brackets |
+| Social Security benefits | SSA-1099 | 0%, up to 50%, or up to 85% taxable, decided by the provisional-income test below |
+| Municipal bond interest | 1099-INT box 8 | Never taxed federally — but still counts toward provisional income |
+
+**Social Security (IRC 86)** — benefits are not taxed on their own merits but on *provisional income*: everything else you earned, plus otherwise-tax-free municipal interest, plus half the benefits. Below $25,000 (single) / $32,000 (joint) nothing is taxable; past $34,000 / $44,000 the taxable share climbs toward 85% and stops there. None of these thresholds has ever been indexed — they are fixed at their 1983/1993 values, which is why they catch more retirees every year.
 
 **Surtaxes** — the 0.9% Additional Medicare Tax on earned income above the statutory threshold, and the 3.8% NIIT on the lesser of investment income or the MAGI overage.
 
@@ -196,6 +204,9 @@ This is an educational estimator, not tax or religious advice.
 - **No AMT, and no credits beyond the dependent ones.** No EITC, education, energy, or foreign tax credits; no deduction phaseouts other than the CTC's.
 - **The Additional Child Tax Credit is not refunded.** Dependent credits reduce tax to zero and stop, so a low-income filer's refund is understated rather than overstated.
 - **Business losses do not offset other income.** If expenses exceed self-employment revenue the business simply contributes zero, rather than reducing wage income.
+- **No K-1 / partnership income.** Whether a K-1 share carries self-employment tax depends on the entity and on whether the partner is active, which this calculator cannot infer. Enter the ordinary portion under *Other income* and the passive portion under *Rental & royalty*, whichever fits.
+- **Married-filing-separately Social Security is modeled at the harsher base of $0**, per IRC 86(c)(1)(C), which applies to a spouse who lived with their partner at any point in the year. A separated filer who lived apart all year gets the single thresholds and will see benefits overstated as taxable here.
+- **No senior deduction or age input.** OBBBA's $6,000 deduction for filers 65+ is not modeled.
 - **State brackets are single-filer schedules, applied to every filing status.** The dataset carries no married-filing-jointly thresholds, which are wider in many states — joint filers will see state tax overstated.
 - **No state standard deductions or exemptions.** The dataset omits them, so state taxable income is the full net profit less any deductible gift. Real state bills will generally be lower.
 - **State income tax only.** City and county income taxes are excluded — NYC and Yonkers, Maryland counties, Ohio municipalities, Indiana counties, Pennsylvania local EIT.

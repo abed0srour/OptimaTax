@@ -19,6 +19,7 @@ import type {
   ProgressiveResult,
   ScenarioBreakdown,
   SelfEmploymentTax,
+  SocialSecurityTaxability,
   StateTaxEntry,
   TaxComparison,
 } from "./types";
@@ -249,6 +250,62 @@ export function calculateNetInvestmentIncomeTax(
   return Math.min(clampToZero(investmentIncome), overage) * config.rate;
 }
 
+/**
+ * How much of a year's Social Security lands in taxable income (IRC 86).
+ *
+ * Benefits are not taxed on their own merits but on "provisional income" —
+ * everything else you earned, plus municipal-bond interest that is otherwise
+ * tax-free, plus half the benefits. Below the base amount nothing is taxable;
+ * past the adjusted base the taxable share climbs toward 85% but never past it.
+ */
+export function calculateSocialSecurityTaxability(
+  benefits: number,
+  otherIncome: number,
+  taxExemptInterest: number,
+  status: FilingStatus,
+): SocialSecurityTaxability {
+  const config = federalTax.social_security_benefits;
+  const received = clampToZero(benefits);
+
+  const provisionalIncome =
+    clampToZero(otherIncome) + clampToZero(taxExemptInterest) + received / 2;
+
+  if (received <= 0) {
+    return { benefits: 0, provisionalIncome, taxable: 0, taxableShare: 0 };
+  }
+
+  const base = config.base_amounts[status];
+  const adjustedBase = config.adjusted_base_amounts[status];
+
+  let taxable: number;
+  if (provisionalIncome <= base) {
+    taxable = 0;
+  } else if (provisionalIncome <= adjustedBase) {
+    // First tier: half the overage, capped at half the benefits.
+    taxable = Math.min(
+      (provisionalIncome - base) * config.lower_tier_rate,
+      received * config.lower_tier_rate,
+    );
+  } else {
+    // Second tier stacks on the first, and 85% is the hard ceiling.
+    const carried = Math.min(
+      config.adjustment_amounts[status],
+      received * config.lower_tier_rate,
+    );
+    taxable = Math.min(
+      (provisionalIncome - adjustedBase) * config.upper_tier_rate + carried,
+      received * config.upper_tier_rate,
+    );
+  }
+
+  return {
+    benefits: received,
+    provisionalIncome,
+    taxable,
+    taxableShare: received > 0 ? taxable / received : 0,
+  };
+}
+
 // ---------------------------------------------------------------- credits
 
 /**
@@ -289,8 +346,10 @@ export function calculateChildTaxCredit(
 // ---------------------------------------------------------------- the engine
 
 /**
- * Total income after business expenses — the pool the khums sits on and the
- * headline "what you made this year" figure.
+ * Every dollar that actually arrived, after business expenses — including the
+ * parts the IRS never taxes. Khums is owed on real surplus, not on taxable
+ * income, so municipal interest and untaxed benefits belong here even though
+ * they never reach AGI.
  */
 export function calculateNetProfit(
   income: IncomeSources,
@@ -299,8 +358,46 @@ export function calculateNetProfit(
   return (
     clampToZero(income.wages) +
     calculateSelfEmploymentProfit(income, expenses) +
+    clampToZero(income.retirementDistributions) +
+    clampToZero(income.unemployment) +
+    clampToZero(income.otherOrdinaryIncome) +
+    clampToZero(income.rentalRoyalty) +
     clampToZero(income.otherInvestmentIncome) +
-    clampToZero(income.longTermCapitalGains)
+    clampToZero(income.longTermCapitalGains) +
+    clampToZero(income.socialSecurityBenefits) +
+    clampToZero(income.taxExemptInterest)
+  );
+}
+
+/**
+ * Income taxed at ordinary rates *before* Social Security is folded in — the
+ * "everything else" side of the provisional-income test.
+ */
+function ordinaryIncomeExcludingBenefits(
+  income: IncomeSources,
+  expenses: number,
+): number {
+  return (
+    clampToZero(income.wages) +
+    calculateSelfEmploymentProfit(income, expenses) +
+    clampToZero(income.retirementDistributions) +
+    clampToZero(income.unemployment) +
+    clampToZero(income.otherOrdinaryIncome) +
+    clampToZero(income.rentalRoyalty) +
+    clampToZero(income.otherInvestmentIncome)
+  );
+}
+
+/**
+ * The NIIT base: passive and portfolio income only. Wages, self-employment
+ * profit, retirement distributions and Social Security are all excluded by
+ * IRC 1411(c), so they never land here.
+ */
+function netInvestmentIncome(income: IncomeSources): number {
+  return (
+    clampToZero(income.longTermCapitalGains) +
+    clampToZero(income.otherInvestmentIncome) +
+    clampToZero(income.rentalRoyalty)
   );
 }
 
@@ -337,15 +434,40 @@ function totalDeduction(
     : Math.max(standardDeduction, donation);
 }
 
-/** AGI is independent of the charitable gift, so it is computed once up front. */
-function calculateAgi(
+/**
+ * AGI, and the Social Security figure it depends on. Independent of the
+ * charitable gift — that comes off below the line — so both scenarios and the
+ * bracket-target solver can share one computation.
+ *
+ * Note what is *absent*: municipal interest never enters AGI, and only the
+ * taxable slice of Social Security does.
+ */
+function calculateAgiParts(
   income: IncomeSources,
   expenses: number,
-  selfEmploymentTax: SelfEmploymentTax,
-): number {
-  return clampToZero(
-    calculateNetProfit(income, expenses) - selfEmploymentTax.deductiblePortion,
+  status: FilingStatus,
+): { agi: number; socialSecurity: SocialSecurityTaxability } {
+  const seProfit = calculateSelfEmploymentProfit(income, expenses);
+  const seTax = calculateSelfEmploymentTax(seProfit, clampToZero(income.wages));
+
+  const ordinaryBeforeBenefits = ordinaryIncomeExcludingBenefits(income, expenses);
+  const gains = clampToZero(income.longTermCapitalGains);
+
+  const socialSecurity = calculateSocialSecurityTaxability(
+    income.socialSecurityBenefits,
+    ordinaryBeforeBenefits + gains - seTax.deductiblePortion,
+    income.taxExemptInterest,
+    status,
   );
+
+  const agi = clampToZero(
+    ordinaryBeforeBenefits +
+      gains +
+      socialSecurity.taxable -
+      seTax.deductiblePortion,
+  );
+
+  return { agi, socialSecurity };
 }
 
 /**
@@ -365,9 +487,7 @@ export function calculateBracketTarget(
   const standardDeduction = federalStandardDeduction(filingStatus);
   const givenDonation = clampToZero(donation);
 
-  const seProfit = calculateSelfEmploymentProfit(income, expenses);
-  const seTax = calculateSelfEmploymentTax(seProfit, clampToZero(income.wages));
-  const agi = calculateAgi(income, expenses, seTax);
+  const { agi } = calculateAgiParts(income, expenses, filingStatus);
   const gains = clampToZero(income.longTermCapitalGains);
 
   const taxableIncome = clampToZero(
@@ -413,14 +533,13 @@ function buildScenario(
 
   const wages = clampToZero(income.wages);
   const gains = clampToZero(income.longTermCapitalGains);
-  const investment = clampToZero(income.otherInvestmentIncome);
 
   const seProfit = calculateSelfEmploymentProfit(income, expenses);
   const selfEmployment = calculateSelfEmploymentTax(seProfit, wages);
   const ficaWithheld = calculateFicaWithheld(wages);
 
   const grossIncome = calculateNetProfit(income, expenses);
-  const agi = calculateAgi(income, expenses, selfEmployment);
+  const { agi, socialSecurity } = calculateAgiParts(income, expenses, filingStatus);
 
   const federalTaxableIncome = clampToZero(
     agi - totalDeduction(federalStandardDeduction(filingStatus), donation, deductionMode),
@@ -452,7 +571,7 @@ function buildScenario(
     filingStatus,
   );
   const netInvestmentIncomeTax = calculateNetInvestmentIncomeTax(
-    gains + investment,
+    netInvestmentIncome(income),
     agi,
     filingStatus,
   );
@@ -486,6 +605,7 @@ function buildScenario(
     capitalGains,
     state: stateResult,
     selfEmployment,
+    socialSecurity,
     ficaWithheld,
     additionalMedicare,
     netInvestmentIncomeTax,

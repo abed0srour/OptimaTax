@@ -1,12 +1,18 @@
 "use client";
 
+import type { ReactNode } from "react";
 import {
   Briefcase,
+  Building2,
+  CircleDollarSign,
   Landmark,
   LineChart,
   PiggyBank,
   Receipt,
+  ShieldCheck,
+  TrendingUp,
   TriangleAlert,
+  Umbrella,
   Wallet,
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -20,9 +26,87 @@ import { formatCurrency, parseMoney } from "@/lib/format";
 export interface IncomeText {
   wages: string;
   selfEmployment: string;
-  longTermCapitalGains: string;
+  retirementDistributions: string;
+  unemployment: string;
+  otherOrdinaryIncome: string;
+  rentalRoyalty: string;
   otherInvestmentIncome: string;
+  longTermCapitalGains: string;
+  socialSecurityBenefits: string;
+  taxExemptInterest: string;
 }
+
+interface Field {
+  key: keyof IncomeText;
+  label: string;
+  icon: ReactNode;
+}
+
+/**
+ * Everything except wages and 1099 revenue lives in one of these groups, so
+ * the step opens with two fields rather than ten. Each group's header carries
+ * a running total, so nothing entered inside stays hidden.
+ */
+const GROUPS: { title: string; icon: ReactNode; fields: Field[] }[] = [
+  {
+    title: "Investment income",
+    icon: <LineChart />,
+    fields: [
+      {
+        key: "longTermCapitalGains",
+        label: "Long-term capital gains & qualified dividends",
+        icon: <TrendingUp />,
+      },
+      {
+        key: "otherInvestmentIncome",
+        label: "Interest, ordinary dividends & short-term gains",
+        icon: <Landmark />,
+      },
+      {
+        key: "rentalRoyalty",
+        label: "Rental & royalty income (Schedule E)",
+        icon: <Building2 />,
+      },
+      {
+        key: "taxExemptInterest",
+        label: "Tax-exempt interest (municipal bonds)",
+        icon: <ShieldCheck />,
+      },
+    ],
+  },
+  {
+    title: "Retirement & benefits",
+    icon: <Umbrella />,
+    fields: [
+      {
+        key: "retirementDistributions",
+        label: "Retirement distributions — IRA, 401(k), pension (1099-R)",
+        icon: <PiggyBank />,
+      },
+      {
+        key: "socialSecurityBenefits",
+        label: "Social Security benefits (SSA-1099)",
+        icon: <Umbrella />,
+      },
+    ],
+  },
+  {
+    title: "Other income",
+    icon: <CircleDollarSign />,
+    fields: [
+      {
+        key: "unemployment",
+        label: "Unemployment compensation (1099-G)",
+        icon: <CircleDollarSign />,
+      },
+      {
+        key: "otherOrdinaryIncome",
+        label: "Alimony, gambling, prizes & other",
+        icon: <CircleDollarSign />,
+      },
+    ],
+  },
+];
 
 export function StepIncome({
   incomeText,
@@ -45,12 +129,7 @@ export function StepIncome({
     onIncomeChange({ ...incomeText, [key]: value });
 
   const selfEmployment = parseMoney(incomeText.selfEmployment);
-  const expenses = parseMoney(expensesText);
-  const businessLoss = expenses > selfEmployment;
-
-  const investmentTotal =
-    parseMoney(incomeText.longTermCapitalGains) +
-    parseMoney(incomeText.otherInvestmentIncome);
+  const businessLoss = parseMoney(expensesText) > selfEmployment;
 
   return (
     <StepCard
@@ -67,9 +146,9 @@ export function StepIncome({
       }
     >
       {/*
-       * Split by source rather than one total, because each is taxed under a
-       * different rule: wages carry FICA, 1099 income carries self-employment
-       * tax, and long-term gains get their own 0/15/20% table.
+       * Grouped by tax treatment, not by form number: wages carry FICA, 1099
+       * income carries self-employment tax, long-term gains get their own
+       * table, and Social Security is taxed on a formula of its own.
        */}
       <MoneyField
         label="W-2 wages"
@@ -94,28 +173,36 @@ export function StepIncome({
         />
       ) : null}
 
-      <Disclosure
-        icon={<LineChart />}
-        title="Investment income"
-        aside={investmentTotal > 0 ? formatCurrency(investmentTotal) : "None"}
-        defaultOpen={investmentTotal > 0}
-      >
-        <div className="space-y-5">
-          <MoneyField
-            label="Long-term capital gains & qualified dividends"
-            icon={<LineChart />}
-            value={incomeText.longTermCapitalGains}
-            onChange={set("longTermCapitalGains")}
-          />
+      <div className="space-y-2">
+        {GROUPS.map((group) => {
+          const total = group.fields.reduce(
+            (sum, field) => sum + parseMoney(incomeText[field.key]),
+            0,
+          );
 
-          <MoneyField
-            label="Interest, ordinary dividends & short-term gains"
-            icon={<Landmark />}
-            value={incomeText.otherInvestmentIncome}
-            onChange={set("otherInvestmentIncome")}
-          />
-        </div>
-      </Disclosure>
+          return (
+            <Disclosure
+              key={group.title}
+              icon={group.icon}
+              title={group.title}
+              aside={total > 0 ? formatCurrency(total) : "None"}
+              defaultOpen={total > 0}
+            >
+              <div className="space-y-5">
+                {group.fields.map((field) => (
+                  <MoneyField
+                    key={field.key}
+                    label={field.label}
+                    icon={field.icon}
+                    value={incomeText[field.key]}
+                    onChange={set(field.key)}
+                  />
+                ))}
+              </div>
+            </Disclosure>
+          );
+        })}
+      </div>
 
       <Readout
         label="Total income"

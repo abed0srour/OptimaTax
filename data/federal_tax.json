@@ -140,6 +140,31 @@
     "medicare_rate": 0.0145
   },
 
+  "social_security_benefits": {
+    "name": "Taxability of Social Security benefits",
+    "notes": "IRC 86. Provisional income = AGI excluding benefits + tax-exempt interest + half the benefits. Below `base_amounts`, nothing is taxable. Between the two thresholds, the taxable share tops out at 50%. Above `adjusted_base_amounts` it tops out at 85%, computed as 85% of the overage plus the lesser of `adjustment_amounts` or half the benefits. None of these figures has ever been indexed — they are fixed at their 1983/1993 values. `married_separate` carries $0 because IRC 86(c)(1)(C) zeroes the base for a spouse who lived with their partner at any point in the year; a separated filer living apart all year gets the single amounts instead, which this calculator does not model.",
+    "base_amounts": {
+      "single": 25000,
+      "married_joint": 32000,
+      "head_of_household": 25000,
+      "married_separate": 0
+    },
+    "adjusted_base_amounts": {
+      "single": 34000,
+      "married_joint": 44000,
+      "head_of_household": 34000,
+      "married_separate": 0
+    },
+    "adjustment_amounts": {
+      "single": 4500,
+      "married_joint": 6000,
+      "head_of_household": 4500,
+      "married_separate": 0
+    },
+    "lower_tier_rate": 0.5,
+    "upper_tier_rate": 0.85
+  },
+
   "child_tax_credit": {
     "name": "Child Tax Credit",
     "notes": "IRC 24 as amended by OBBBA, per Rev. Proc. 2025-32. Non-refundable against income tax; up to `refundable_limit` per child can be refundable as the Additional Child Tax Credit, which this calculator does NOT pay out — it only reduces tax to zero. Reduced by `phaseout_per` for each `phaseout_step` of MAGI (or fraction of one) above the threshold. `other_dependent_credit` covers dependents who are not qualifying children and is never refundable.",
