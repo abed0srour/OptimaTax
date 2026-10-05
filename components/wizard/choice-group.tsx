@@ -1,19 +1,17 @@
 "use client";
 
-import { useId, type ReactNode } from "react";
-import { Check } from "lucide-react";
+import { useId } from "react";
 import { cn } from "@/lib/utils";
 
 export interface Choice<T extends string> {
   value: T;
   label: string;
   detail?: string;
-  icon?: ReactNode;
 }
 
 /**
- * A radio group drawn as tappable cards. Bigger targets than a select, and the
- * secondary detail line stays visible instead of hiding inside a dropdown.
+ * A radio group drawn as tappable rows. Bigger targets than a select, and the
+ * optional detail line stays visible instead of hiding inside a dropdown.
  */
 export function ChoiceGroup<T extends string>({
   label,
@@ -31,8 +29,8 @@ export function ChoiceGroup<T extends string>({
   const legendId = useId();
 
   return (
-    <div className="space-y-2">
-      <p className="text-[0.9rem] font-medium" id={legendId}>
+    <div className="space-y-2.5">
+      <p className="text-sm font-medium" id={legendId}>
         {label}
       </p>
       <div
@@ -51,48 +49,33 @@ export function ChoiceGroup<T extends string>({
               aria-checked={selected}
               onClick={() => onChange(choice.value)}
               className={cn(
-                "group flex items-start gap-3 rounded-xl border p-3.5 text-left transition-colors outline-none",
+                "flex min-h-12 items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left transition-colors outline-none",
                 "focus-visible:ring-3 focus-visible:ring-ring/50",
                 selected
-                  ? "border-primary bg-accent/60"
-                  : "border-border bg-card hover:border-foreground/20 hover:bg-muted/50",
+                  ? "border-foreground bg-foreground/3"
+                  : "border-border hover:border-foreground/30",
               )}
             >
-              <span
-                className={cn(
-                  "mt-0.5 flex size-4.5 shrink-0 items-center justify-center rounded-full border transition-colors",
-                  selected
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-input bg-card",
-                )}
-              >
-                {selected ? <Check className="size-3" strokeWidth={3.5} /> : null}
-              </span>
-
-              {choice.icon ? (
-                <span
-                  className={cn(
-                    "shrink-0 transition-colors [&_svg]:size-4.5",
-                    selected ? "text-primary" : "text-muted-foreground",
-                  )}
-                >
-                  {choice.icon}
-                </span>
-              ) : null}
-
               <span className="grid min-w-0 gap-0.5">
-                <span
-                  className={cn(
-                    "text-sm leading-snug",
-                    selected ? "font-semibold" : "font-medium",
-                  )}
-                >
+                <span className="text-[0.95rem] leading-snug font-medium">
                   {choice.label}
                 </span>
                 {choice.detail ? (
-                  <span className="tnum text-xs leading-snug text-muted-foreground">
+                  <span className="text-[0.8rem] leading-snug text-muted-foreground">
                     {choice.detail}
                   </span>
+                ) : null}
+              </span>
+
+              <span
+                aria-hidden
+                className={cn(
+                  "flex size-5 shrink-0 items-center justify-center rounded-full border transition-colors",
+                  selected ? "border-foreground" : "border-input",
+                )}
+              >
+                {selected ? (
+                  <span className="size-2.5 rounded-full bg-foreground" />
                 ) : null}
               </span>
             </button>

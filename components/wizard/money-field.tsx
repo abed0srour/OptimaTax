@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, type ReactNode } from "react";
+import { useId } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,42 +13,31 @@ import { cn } from "@/lib/utils";
  */
 export function MoneyField({
   label,
-  icon,
   value,
   onChange,
   placeholder = "0",
   action,
   tone = "default",
+  size = "lg",
   disabled = false,
 }: {
   label: string;
-  icon?: ReactNode;
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
   action?: { label: string; onClick: () => void; title?: string };
   tone?: "default" | "give";
+  /** `md` for the secondary fields tucked inside a disclosure. */
+  size?: "md" | "lg";
   disabled?: boolean;
 }) {
   const id = useId();
+  const large = size === "lg";
 
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-        <Label
-          htmlFor={id}
-          className="flex items-center gap-2 text-[0.9rem] font-medium"
-        >
-          {icon ? (
-            <span
-              className={cn(
-                "shrink-0 [&_svg]:size-4",
-                tone === "give" ? "text-give" : "text-muted-foreground",
-              )}
-            >
-              {icon}
-            </span>
-          ) : null}
+        <Label htmlFor={id} className="text-sm leading-snug font-medium">
           {label}
         </Label>
         {action ? (
@@ -60,7 +49,7 @@ export function MoneyField({
             title={action.title}
             className={cn(
               "-my-0.5 font-semibold",
-              tone === "give" ? "text-give-ink hover:bg-give-soft" : "text-primary",
+              tone === "give" ? "text-give-ink hover:bg-give-soft" : "",
             )}
           >
             {action.label}
@@ -71,10 +60,14 @@ export function MoneyField({
       <div className="relative">
         <span
           aria-hidden
-          className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-xl font-medium text-muted-foreground"
+          className={cn(
+            "pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 font-medium text-muted-foreground",
+            large ? "text-xl" : "text-base",
+          )}
         >
           $
         </span>
+        {/* Never below 16px — anything smaller makes iOS zoom on focus. */}
         <Input
           id={id}
           type="text"
@@ -85,9 +78,11 @@ export function MoneyField({
           onChange={(event) => onChange(formatMoneyInput(event.target.value))}
           disabled={disabled}
           className={cn(
-            "tnum h-14 rounded-xl bg-card pl-9 text-xl font-semibold tracking-tight md:text-xl",
-            "placeholder:font-normal placeholder:tracking-normal",
-            tone === "give" && "focus-visible:border-give focus-visible:ring-give/25",
+            "tnum rounded-2xl bg-card font-semibold tracking-tight",
+            "placeholder:font-normal placeholder:tracking-normal placeholder:text-muted-foreground/60",
+            "focus-visible:border-foreground focus-visible:ring-foreground/10",
+            large ? "h-14 pl-9 text-xl md:text-xl" : "h-12 pl-8 text-base md:text-base",
+            tone === "give" && "focus-visible:border-give focus-visible:ring-give/20",
           )}
         />
       </div>

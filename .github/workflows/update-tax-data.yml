@@ -1,0 +1,75 @@
+name: Update tax data
+
+on:
+  schedule:
+    # Mondays at 14:00 UTC, October and November only (IRS Rev. Proc. season).
+    - cron: "0 14 * 10,11 1"
+  workflow_dispatch:
+
+# Pushes a branch and opens a PR. Requires Settings > Actions > General >
+# "Allow GitHub Actions to create and approve pull requests".
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: update-tax-data
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Fetch and validate federal tax data
+        env:
+          # A public, key-less JSON URL (repository variable, not a secret).
+          TAX_DATA_SOURCE_URL: ${{ vars.TAX_DATA_SOURCE_URL }}
+        run: node scripts/update-tax-data.mjs
+
+      - name: Type-check the updated data
+        run: npx tsc --noEmit
+
+      - name: Open a pull request if changed
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: chore/update-tax-data
+        run: |
+          if git diff --quiet -- data/federal_tax.json; then
+            echo "federal_tax.json unchanged; no PR needed."
+            exit 0
+          fi
+
+          YEAR=$(node -p "require('./data/federal_tax.json').tax_year")
+          SOURCE=$(node -p "require('./data/federal_tax.json').source")
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B "$BRANCH"
+          git add data/federal_tax.json
+          git commit -m "chore: update federal tax data for $YEAR"
+          # Reuse one branch: a later run refreshes the open PR instead of adding another.
+          git push --force origin "$BRANCH"
+
+          if [ -n "$(gh pr list --head "$BRANCH" --state open --json number --jq '.[].number')" ]; then
+            echo "A PR for $BRANCH is already open; branch updated."
+            exit 0
+          fi
+
+          gh pr create \
+            --base "${{ github.event.repository.default_branch }}" \
+            --head "$BRANCH" \
+            --title "Update federal tax data for $YEAR" \
+            --body "Automated update of the inflation-indexed figures in \`data/federal_tax.json\`.
+
+          **Source:** $SOURCE
+
+          Validated by \`scripts/update-tax-data.mjs\` and \`tsc --noEmit\`. **Check the brackets and standard deductions against the Revenue Procedure before merging**, and update the year in the file's \`notes\` field by hand."

@@ -27,6 +27,9 @@ import type {
 /** Khums is one fifth of the net surplus remaining after the year's expenses. */
 export const KHUMS_RATE = 0.2;
 
+/** Itemized charitable gifts only count above this share of AGI (tax years 2026+). */
+export const CHARITABLE_AGI_FLOOR = 0.005;
+
 const EMPTY_RESULT: ProgressiveResult = {
   tax: 0,
   slices: [],
@@ -631,7 +634,18 @@ export function buildComparison(input: CalculatorInput): TaxComparison {
   // 60% of AGI. Anything above that carries forward for up to five years.
   const agiLimitAmount =
     netProfit * federalTax.charitable_deduction_limits.cash_public_charity_agi_limit;
-  const deductibleDonation = Math.min(donationEntered, agiLimitAmount);
+  const cappedDonation = Math.min(donationEntered, agiLimitAmount);
+
+  // The floor comes off the gift that survives the ceiling, so a gift smaller
+  // than 0.5% of AGI deducts nothing. Off unless the caller asks for it.
+  const floorAmount = input.applyCharitableFloor
+    ? Math.min(
+        cappedDonation,
+        calculateAgiParts(input.income, input.expenses, input.filingStatus).agi *
+          CHARITABLE_AGI_FLOOR,
+      )
+    : 0;
+  const deductibleDonation = cappedDonation - floorAmount;
 
   const scenarioA = buildScenario("Without donation", input, 0, state);
   const scenarioB = buildScenario("With donation", input, deductibleDonation, state);
@@ -646,10 +660,11 @@ export function buildComparison(input: CalculatorInput): TaxComparison {
     netProfit,
     donationEntered,
     deductibleDonation,
-    donationCarryforward: donationEntered - deductibleDonation,
+    donationCarryforward: donationEntered - cappedDonation,
+    charitableFloorAmount: floorAmount,
     agiLimitAmount,
     khums: calculateKhums(netProfit, donationEntered),
-    bracketTarget: calculateBracketTarget(input, donationEntered),
+    bracketTarget: calculateBracketTarget(input, donationEntered - floorAmount),
     scenarioA,
     scenarioB,
     taxSavings,

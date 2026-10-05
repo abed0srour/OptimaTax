@@ -3,113 +3,119 @@
 import type { ReactNode } from "react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 /**
- * The frame every step shares: an icon, the question being asked, and a footer
- * that carries the Back / Continue pair. The question is the only prose — the
- * controls below it are meant to explain themselves.
+ * The sheet every step shares: the question, the controls, and a footer for
+ * Back / Continue. Deliberately not a shadcn `Card` — that clips overflow,
+ * which would stop the footer from sticking to the bottom of a phone screen.
  */
 export function StepCard({
-  icon,
-  eyebrow,
   title,
+  subtitle,
   children,
   footer,
   className,
 }: {
-  icon: ReactNode;
-  eyebrow: string;
   title: string;
+  subtitle?: string;
   children: ReactNode;
   footer?: ReactNode;
   className?: string;
 }) {
   return (
-    <Card
+    <section
+      aria-labelledby="step-title"
       className={cn(
-        "animate-step-in rounded-2xl shadow-sm ring-foreground/8 [--card-spacing:--spacing(6)]",
+        "animate-step-in rounded-[1.75rem] border border-border bg-card",
         className,
       )}
     >
-      <CardHeader className="gap-2">
-        <div className="flex items-center gap-3">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-accent text-accent-foreground [&_svg]:size-4.5">
-            {icon}
-          </span>
-          <div className="grid gap-0.5">
-            <span className="text-[0.7rem] font-semibold tracking-wider text-muted-foreground uppercase">
-              {eyebrow}
-            </span>
-            <CardTitle className="text-xl leading-tight font-semibold tracking-tight">
-              {title}
-            </CardTitle>
-          </div>
-        </div>
-      </CardHeader>
+      <header className="px-5 pt-6 sm:px-8 sm:pt-8">
+        <h1
+          id="step-title"
+          className="font-display text-[2.1rem] leading-[1.05] tracking-tight sm:text-[2.6rem]"
+        >
+          {title}
+        </h1>
+        {subtitle ? (
+          <p className="mt-2 text-[0.95rem] leading-relaxed text-muted-foreground">
+            {subtitle}
+          </p>
+        ) : null}
+      </header>
 
-      <CardContent className="space-y-6 pt-1">{children}</CardContent>
+      <div className="space-y-7 px-5 pt-6 pb-7 sm:px-8 sm:pb-8">{children}</div>
 
       {footer}
-    </Card>
+    </section>
   );
 }
 
-/** Footer navigation. Must be passed as `StepCard`'s `footer` to sit correctly. */
+/**
+ * Footer navigation. Pass as `StepCard`'s `footer`. On phones it sticks to the
+ * bottom edge so Continue is always under the thumb; from `sm` up it sits at
+ * the foot of the sheet.
+ */
 export function StepNav({
   onBack,
   onNext,
   nextLabel = "Continue",
-  backLabel = "Back",
   nextDisabled = false,
-  extra,
+  sticky = true,
+  children,
 }: {
   onBack?: () => void;
   onNext?: () => void;
   nextLabel?: string;
-  backLabel?: string;
   nextDisabled?: boolean;
-  extra?: ReactNode;
+  /** Off when the step's real choices live in its body, not the footer. */
+  sticky?: boolean;
+  /** Replaces the Continue button. */
+  children?: ReactNode;
 }) {
-  return (
-    /*
-     * Column-reverse on phones so the primary action sits on top and both
-     * buttons get a full-width thumb target; a single row from `sm` up.
-     */
-    <CardFooter className="flex-col-reverse gap-2 bg-muted/40 px-4 py-3 sm:flex-row sm:justify-between sm:gap-3 sm:px-6">
-      <div className="flex w-full items-center gap-1 sm:w-auto">
-        {onBack ? (
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={onBack}
-            className="h-10 w-full px-3 text-[0.9rem] sm:w-auto"
-          >
-            <ArrowLeft data-icon="inline-start" />
-            {backLabel}
-          </Button>
-        ) : null}
-        {extra}
-      </div>
+  // Back alone gets its label on phones too; an unlabelled circle looks lost.
+  const backOnly = !children && !onNext;
 
-      {onNext ? (
+  return (
+    <div
+      className={cn(
+        "flex items-center gap-2 rounded-b-[1.75rem] border-t border-border px-4 py-3",
+        sticky &&
+          "sticky bottom-0 z-10 bg-card/95 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md",
+        "sm:static sm:gap-3 sm:bg-transparent sm:px-8 sm:py-4 sm:backdrop-blur-none",
+      )}
+    >
+      {onBack ? (
         <Button
           type="button"
-          onClick={onNext}
-          disabled={nextDisabled}
-          className="h-10 w-full px-5 text-[0.9rem] sm:w-auto"
+          variant="outline"
+          onClick={onBack}
+          aria-label="Back"
+          className={cn(
+            "size-12 shrink-0 rounded-full p-0 sm:h-11 sm:w-auto sm:px-5",
+            backOnly && "w-auto px-5",
+          )}
         >
-          {nextLabel}
-          <ArrowRight data-icon="inline-end" />
+          <ArrowLeft />
+          <span className={backOnly ? "" : "hidden sm:inline"}>Back</span>
         </Button>
       ) : null}
-    </CardFooter>
+
+      <div className="flex min-w-0 flex-1 justify-end gap-2">
+        {children ??
+          (onNext ? (
+            <Button
+              type="button"
+              onClick={onNext}
+              disabled={nextDisabled}
+              className="h-12 w-full rounded-full px-6 text-[0.95rem] sm:h-11 sm:w-auto"
+            >
+              {nextLabel}
+              <ArrowRight data-icon="inline-end" />
+            </Button>
+          ) : null)}
+      </div>
+    </div>
   );
 }

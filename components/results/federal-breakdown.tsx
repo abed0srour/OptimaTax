@@ -1,4 +1,3 @@
-import { Landmark } from "lucide-react";
 import { Disclosure } from "@/components/ui-extras/disclosure";
 import { formatCurrency } from "@/lib/format";
 import type { ScenarioBreakdown } from "@/lib/types";
@@ -33,10 +32,8 @@ export function FederalBreakdown({ scenario }: { scenario: ScenarioBreakdown }) 
 
   return (
     <Disclosure
-      icon={<Landmark />}
-      title="What makes up the federal tax"
+      title="Federal tax, line by line"
       aside={<span className="tnum">{formatCurrency(totalFederalTax)}</span>}
-      className="bg-card"
     >
       <dl className="space-y-2.5">
         {rows.map((row) => (

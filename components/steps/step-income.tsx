@@ -1,23 +1,9 @@
 "use client";
 
-import type { ReactNode } from "react";
-import {
-  Briefcase,
-  Building2,
-  CircleDollarSign,
-  Landmark,
-  LineChart,
-  PiggyBank,
-  Receipt,
-  ShieldCheck,
-  TrendingUp,
-  TriangleAlert,
-  Umbrella,
-  Wallet,
-} from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useState } from "react";
 import { Disclosure } from "@/components/ui-extras/disclosure";
 import { MoneyField } from "@/components/wizard/money-field";
+import { Note } from "@/components/wizard/note";
 import { Readout } from "@/components/wizard/readout";
 import { StepCard, StepNav } from "@/components/wizard/step-card";
 import { formatCurrency, parseMoney } from "@/lib/format";
@@ -36,76 +22,20 @@ export interface IncomeText {
   taxExemptInterest: string;
 }
 
-interface Field {
-  key: keyof IncomeText;
-  label: string;
-  icon: ReactNode;
-}
-
 /**
- * Everything except wages and 1099 revenue lives in one of these groups, so
- * the step opens with two fields rather than ten. Each group's header carries
- * a running total, so nothing entered inside stays hidden.
+ * Everything except wages and 1099 revenue lives behind one disclosure, so the
+ * step opens with two fields rather than ten. Its header carries a running
+ * total, so nothing entered inside stays hidden.
  */
-const GROUPS: { title: string; icon: ReactNode; fields: Field[] }[] = [
-  {
-    title: "Investment income",
-    icon: <LineChart />,
-    fields: [
-      {
-        key: "longTermCapitalGains",
-        label: "Long-term capital gains & qualified dividends",
-        icon: <TrendingUp />,
-      },
-      {
-        key: "otherInvestmentIncome",
-        label: "Interest, ordinary dividends & short-term gains",
-        icon: <Landmark />,
-      },
-      {
-        key: "rentalRoyalty",
-        label: "Rental & royalty income (Schedule E)",
-        icon: <Building2 />,
-      },
-      {
-        key: "taxExemptInterest",
-        label: "Tax-exempt interest (municipal bonds)",
-        icon: <ShieldCheck />,
-      },
-    ],
-  },
-  {
-    title: "Retirement & benefits",
-    icon: <Umbrella />,
-    fields: [
-      {
-        key: "retirementDistributions",
-        label: "Retirement distributions — IRA, 401(k), pension (1099-R)",
-        icon: <PiggyBank />,
-      },
-      {
-        key: "socialSecurityBenefits",
-        label: "Social Security benefits (SSA-1099)",
-        icon: <Umbrella />,
-      },
-    ],
-  },
-  {
-    title: "Other income",
-    icon: <CircleDollarSign />,
-    fields: [
-      {
-        key: "unemployment",
-        label: "Unemployment compensation (1099-G)",
-        icon: <CircleDollarSign />,
-      },
-      {
-        key: "otherOrdinaryIncome",
-        label: "Alimony, gambling, prizes & other",
-        icon: <CircleDollarSign />,
-      },
-    ],
-  },
+const OTHER_FIELDS: { key: keyof IncomeText; label: string }[] = [
+  { key: "longTermCapitalGains", label: "Long-term gains & qualified dividends" },
+  { key: "otherInvestmentIncome", label: "Interest, dividends & short-term gains" },
+  { key: "rentalRoyalty", label: "Rental & royalty income" },
+  { key: "taxExemptInterest", label: "Tax-exempt interest" },
+  { key: "retirementDistributions", label: "IRA, 401(k) & pension withdrawals" },
+  { key: "socialSecurityBenefits", label: "Social Security benefits" },
+  { key: "unemployment", label: "Unemployment" },
+  { key: "otherOrdinaryIncome", label: "Anything else — alimony, prizes…" },
 ];
 
 export function StepIncome({
@@ -131,77 +61,66 @@ export function StepIncome({
   const selfEmployment = parseMoney(incomeText.selfEmployment);
   const businessLoss = parseMoney(expensesText) > selfEmployment;
 
+  const otherTotal = OTHER_FIELDS.reduce(
+    (sum, field) => sum + parseMoney(incomeText[field.key]),
+    0,
+  );
+  // Read once: tying `open` to the live total would snap the panel shut the
+  // moment its last field is cleared.
+  const [otherOpen] = useState(() => otherTotal > 0);
+
   return (
     <StepCard
-      icon={<Wallet />}
-      eyebrow="Step 2 of 5"
-      title="What did you earn this year?"
+      title="What did you earn?"
+      subtitle="Yearly amounts, before tax."
       footer={
         <StepNav
           onBack={onBack}
           onNext={onNext}
-          nextLabel="Calculate my tax"
+          // The disabled button says why, so no separate warning is needed.
+          nextLabel={netProfit > 0 ? "See my tax" : "Enter your income"}
           nextDisabled={netProfit <= 0}
         />
       }
     >
-      {/*
-       * Grouped by tax treatment, not by form number: wages carry FICA, 1099
-       * income carries self-employment tax, long-term gains get their own
-       * table, and Social Security is taxed on a formula of its own.
-       */}
-      <MoneyField
-        label="W-2 wages"
-        icon={<Briefcase />}
-        value={incomeText.wages}
-        onChange={set("wages")}
-      />
-
-      <MoneyField
-        label="Self-employment / 1099 revenue"
-        icon={<PiggyBank />}
-        value={incomeText.selfEmployment}
-        onChange={set("selfEmployment")}
-      />
-
-      {selfEmployment > 0 ? (
+      <div className="space-y-5">
         <MoneyField
-          label="Business expenses"
-          icon={<Receipt />}
-          value={expensesText}
-          onChange={onExpensesChange}
+          label="Salary (W-2)"
+          value={incomeText.wages}
+          onChange={set("wages")}
         />
-      ) : null}
 
-      <div className="space-y-2">
-        {GROUPS.map((group) => {
-          const total = group.fields.reduce(
-            (sum, field) => sum + parseMoney(incomeText[field.key]),
-            0,
-          );
+        <MoneyField
+          label="Self-employment (1099)"
+          value={incomeText.selfEmployment}
+          onChange={set("selfEmployment")}
+        />
 
-          return (
-            <Disclosure
-              key={group.title}
-              icon={group.icon}
-              title={group.title}
-              aside={total > 0 ? formatCurrency(total) : "None"}
-              defaultOpen={total > 0}
-            >
-              <div className="space-y-5">
-                {group.fields.map((field) => (
-                  <MoneyField
-                    key={field.key}
-                    label={field.label}
-                    icon={field.icon}
-                    value={incomeText[field.key]}
-                    onChange={set(field.key)}
-                  />
-                ))}
-              </div>
-            </Disclosure>
-          );
-        })}
+        {selfEmployment > 0 ? (
+          <MoneyField
+            label="Business expenses"
+            value={expensesText}
+            onChange={onExpensesChange}
+          />
+        ) : null}
+
+        <Disclosure
+          title="Other income"
+          aside={otherTotal > 0 ? <span className="tnum">{formatCurrency(otherTotal)}</span> : null}
+          defaultOpen={otherOpen}
+        >
+          <div className="space-y-4">
+            {OTHER_FIELDS.map((field) => (
+              <MoneyField
+                key={field.key}
+                label={field.label}
+                value={incomeText[field.key]}
+                onChange={set(field.key)}
+                size="md"
+              />
+            ))}
+          </div>
+        </Disclosure>
       </div>
 
       <Readout
@@ -211,24 +130,10 @@ export function StepIncome({
       />
 
       {businessLoss ? (
-        <Alert>
-          <TriangleAlert className="text-note-ink" />
-          <AlertTitle>Business expenses exceed your revenue</AlertTitle>
-          <AlertDescription>
-            The business is at a loss, so it contributes nothing to income here.
-            This calculator does not carry the loss against your other income.
-          </AlertDescription>
-        </Alert>
-      ) : null}
-
-      {netProfit <= 0 ? (
-        <Alert>
-          <TriangleAlert className="text-tax" />
-          <AlertTitle>No income to tax yet</AlertTitle>
-          <AlertDescription>
-            Enter what you earned this year to continue.
-          </AlertDescription>
-        </Alert>
+        <Note>
+          Expenses exceed your business revenue, so the business adds nothing
+          here. The loss is not set against your other income.
+        </Note>
       ) : null}
     </StepCard>
   );

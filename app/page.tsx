@@ -6,14 +6,20 @@ import logo from "@/public/logo.png";
 import { StepGiving } from "@/components/steps/step-giving";
 import { StepIncome, type IncomeText } from "@/components/steps/step-income";
 import { StepPlace } from "@/components/steps/step-place";
+import { StepQuick } from "@/components/steps/step-quick";
 import { StepResults } from "@/components/steps/step-results";
 import { StepTax } from "@/components/steps/step-tax";
-import { ContextBar } from "@/components/wizard/context-bar";
+import { ModeToggle, type WizardMode } from "@/components/wizard/mode-toggle";
 import { Stepper, type StepMeta } from "@/components/wizard/stepper";
 import { parseMoney, toMoneyInput } from "@/lib/format";
 import { buildComparison, calculateNetProfit, KHUMS_RATE } from "@/lib/tax";
-import { states, taxYear } from "@/lib/taxData";
-import type { DeductionMode, Dependents, FilingStatus } from "@/lib/types";
+import { taxYear } from "@/lib/taxData";
+import type {
+  DeductionMode,
+  Dependents,
+  FilingStatus,
+  IncomeSources,
+} from "@/lib/types";
 
 const STEPS: StepMeta[] = [
   { id: "place", short: "You", title: "About you" },
@@ -36,6 +42,19 @@ const EMPTY_INCOME: IncomeText = {
   taxExemptInterest: "",
 };
 
+const EMPTY_INCOME_SOURCES: IncomeSources = {
+  wages: 0,
+  selfEmployment: 0,
+  retirementDistributions: 0,
+  unemployment: 0,
+  otherOrdinaryIncome: 0,
+  rentalRoyalty: 0,
+  otherInvestmentIncome: 0,
+  longTermCapitalGains: 0,
+  socialSecurityBenefits: 0,
+  taxExemptInterest: 0,
+};
+
 const DEFAULTS = {
   stateCode: "CA",
   filingStatus: "single" as FilingStatus,
@@ -48,8 +67,15 @@ const DEFAULTS = {
 };
 
 export default function Home() {
+  const [mode, setMode] = useState<WizardMode>("detailed");
   const [step, setStep] = useState(0);
   const [furthest, setFurthest] = useState(0);
+
+  // Quick estimate keeps its own answers and screen; only state and filing
+  // status are shared with the detailed flow, since they mean the same thing.
+  const [quickResults, setQuickResults] = useState(false);
+  const [quickAgiText, setQuickAgiText] = useState("");
+  const [quickDonationText, setQuickDonationText] = useState("");
 
   const [stateCode, setStateCode] = useState(DEFAULTS.stateCode);
   const [filingStatus, setFilingStatus] = useState<FilingStatus>(DEFAULTS.filingStatus);
@@ -114,6 +140,30 @@ export default function Home() {
     ],
   );
 
+  // One AGI figure goes in as ordinary income, so the engine's AGI equals it.
+  // "Itemized" is the real IRS rule, which is when the 0.5% floor applies.
+  const quickComparison = useMemo(
+    () =>
+      buildComparison({
+        income: { ...EMPTY_INCOME_SOURCES, otherOrdinaryIncome: parseMoney(quickAgiText) },
+        expenses: 0,
+        donation: parseMoney(quickDonationText),
+        filingStatus,
+        stateCode,
+        deductionMode: "itemized",
+        dependents: DEFAULTS.dependents,
+        applyCharitableFloor: true,
+      }),
+    [quickAgiText, quickDonationText, filingStatus, stateCode],
+  );
+
+  function showQuickResults(show: boolean) {
+    setQuickResults(show);
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }
+
   function goTo(index: number) {
     const next = Math.min(Math.max(index, 0), STEPS.length - 1);
     setStep(next);
@@ -132,6 +182,9 @@ export default function Home() {
     setDeductionMode(DEFAULTS.deductionMode);
     setMatchKhums(DEFAULTS.matchKhums);
     setDependents(DEFAULTS.dependents);
+    setQuickAgiText("");
+    setQuickDonationText("");
+    setQuickResults(false);
     setFurthest(0);
     setStep(0);
     if (typeof window !== "undefined") {
@@ -143,18 +196,45 @@ export default function Home() {
     <div className="flex min-h-full flex-col">
       <Header />
 
-      <main className="mx-auto w-full max-w-3xl flex-1 px-4 pt-6 pb-20 sm:px-6">
-        <div className="mb-5 space-y-3">
-          <Stepper
-            steps={STEPS}
-            current={step}
-            furthest={furthest}
-            onJump={goTo}
-          />
-          <ContextBar comparison={comparison} filingStatus={filingStatus} />
+      <main className="mx-auto w-full max-w-xl flex-1 px-4 pt-4 pb-10 sm:px-6 sm:pt-8 sm:pb-16">
+        <div className="mb-4 sm:mb-5">
+          <ModeToggle value={mode} onChange={setMode} />
         </div>
 
-        {step === 0 ? (
+        {mode === "quick" ? (
+          quickResults ? (
+            <StepResults
+              comparison={quickComparison}
+              onBack={() => showQuickResults(false)}
+              onRestart={restart}
+            />
+          ) : (
+            <StepQuick
+              agiText={quickAgiText}
+              filingStatus={filingStatus}
+              stateCode={stateCode}
+              donationText={quickDonationText}
+              onAgiChange={setQuickAgiText}
+              onFilingStatusChange={setFilingStatus}
+              onStateChange={setStateCode}
+              onDonationChange={setQuickDonationText}
+              onNext={() => showQuickResults(true)}
+            />
+          )
+        ) : null}
+
+        {mode === "detailed" ? (
+          <div className="mb-5 sm:mb-6">
+            <Stepper
+              steps={STEPS}
+              current={step}
+              furthest={furthest}
+              onJump={goTo}
+            />
+          </div>
+        ) : null}
+
+        {mode === "detailed" && step === 0 ? (
           <StepPlace
             stateCode={stateCode}
             filingStatus={filingStatus}
@@ -166,7 +246,7 @@ export default function Home() {
           />
         ) : null}
 
-        {step === 1 ? (
+        {mode === "detailed" && step === 1 ? (
           <StepIncome
             incomeText={incomeText}
             expensesText={expensesText}
@@ -178,7 +258,7 @@ export default function Home() {
           />
         ) : null}
 
-        {step === 2 ? (
+        {mode === "detailed" && step === 2 ? (
           <StepTax
             scenario={comparison.scenarioA}
             stateEntry={comparison.stateEntry}
@@ -192,7 +272,7 @@ export default function Home() {
           />
         ) : null}
 
-        {step === 3 ? (
+        {mode === "detailed" && step === 3 ? (
           <StepGiving
             donationText={effectiveDonationText}
             deductionMode={deductionMode}
@@ -206,7 +286,7 @@ export default function Home() {
           />
         ) : null}
 
-        {step === 4 ? (
+        {mode === "detailed" && step === 4 ? (
           <StepResults
             comparison={comparison}
             onBack={() => goTo(3)}
@@ -218,28 +298,30 @@ export default function Home() {
   );
 }
 
+/**
+ * One row at every width: logo and name on the left, the rate year on the
+ * right. Nothing wraps, so the two sides always share a baseline on a phone.
+ */
 function Header() {
   return (
-    <header className="border-b border-border bg-card/70 backdrop-blur-sm">
-      <div className="mx-auto flex w-full max-w-3xl flex-wrap items-center justify-between gap-3 px-4 py-3.5 sm:px-6">
-        <div className="flex items-center gap-2.5">
+    <header className="sticky top-0 z-20 border-b border-border/70 bg-background/85 pt-[env(safe-area-inset-top)] backdrop-blur-md">
+      <div className="mx-auto flex h-14 w-full max-w-xl items-center justify-between gap-3 px-4 sm:px-6">
+        <div className="flex min-w-0 items-center gap-2">
           <Image
             src={logo}
             alt=""
-            width={36}
-            height={36}
-            className="size-9 shrink-0"
+            width={28}
+            height={28}
+            className="size-7 shrink-0"
           />
-          <div className="leading-tight">
-            <p className="text-sm font-semibold tracking-tight">OptimaTax</p>
-            <p className="text-xs text-muted-foreground">
-              Tax and giving — step by step
-            </p>
-          </div>
+          <span className="font-display truncate text-[1.4rem] leading-none tracking-tight">
+            OptimaTax
+          </span>
         </div>
-        <p className="text-xs text-muted-foreground">
-          {taxYear} rates · {states.length} jurisdictions
-        </p>
+
+        <span className="tnum shrink-0 rounded-full border border-border bg-card px-2.5 py-1 text-xs font-medium whitespace-nowrap text-muted-foreground">
+          {taxYear} rates
+        </span>
       </div>
     </header>
   );

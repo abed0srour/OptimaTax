@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "update-tax-data": "node scripts/update-tax-data.mjs",
+    "prebuild": "node scripts/update-tax-data.mjs --soft",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"

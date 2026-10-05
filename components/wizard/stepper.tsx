@@ -1,20 +1,20 @@
 "use client";
 
-import { Check } from "lucide-react";
-import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 
 export interface StepMeta {
   id: string;
-  /** Two or three words, shown in the stepper. */
+  /** One or two words, shown under the stepper's segments. */
   short: string;
-  /** The question the step asks, shown on the card itself. */
+  /** The question the step asks, shown on the sheet itself. */
   title: string;
 }
 
 /**
- * Numbered progress across the top of the wizard. Steps already visited stay
- * clickable so a wrong answer is one tap away; steps ahead are inert.
+ * Five segments, one per step — the same shape on every screen. Labels sit
+ * under the segments from `sm` up; phones get a single "Step 2 of 5" line
+ * instead, since five labels cannot share a 320px row. Steps already visited
+ * stay clickable so a wrong answer is one tap away; steps ahead are inert.
  */
 export function Stepper({
   steps,
@@ -27,82 +27,59 @@ export function Stepper({
   furthest: number;
   onJump: (index: number) => void;
 }) {
-  const last = steps.length - 1;
-
   return (
     <nav aria-label="Progress">
-      {/*
-       * Below md the five labelled pills cannot fit on one line without
-       * wrapping mid-word, so phones and small tablets get a bar instead.
-       */}
-      <div className="md:hidden">
-        <div className="mb-2 flex items-baseline justify-between gap-3">
-          <span className="min-w-0 truncate text-sm font-medium">
-            {steps[current].short}
-          </span>
-          <span className="shrink-0 text-xs whitespace-nowrap text-muted-foreground">
-            Step {current + 1} of {steps.length}
-          </span>
-        </div>
-        <Progress value={((current + 1) / steps.length) * 100} className="h-1.5" />
-      </div>
+      <p className="flex items-baseline gap-2 text-xs sm:hidden">
+        <span className="tnum font-medium text-muted-foreground">
+          Step {current + 1} of {steps.length}
+        </span>
+        <span aria-hidden className="text-muted-foreground/50">
+          ·
+        </span>
+        <span className="truncate font-semibold">{steps[current].short}</span>
+      </p>
 
-      <ol className="hidden items-center md:flex">
+      <ol className="flex gap-1.5">
         {steps.map((step, index) => {
-          const done = index < current;
           const active = index === current;
+          const reached = index <= current;
           const reachable = index <= furthest;
 
           return (
-            <li
-              key={step.id}
-              className={cn("flex items-center", index < last && "flex-1")}
-            >
+            <li key={step.id} className="min-w-0 flex-1">
               <button
                 type="button"
                 onClick={() => reachable && onJump(index)}
                 disabled={!reachable}
                 aria-current={active ? "step" : undefined}
+                aria-label={`Step ${index + 1}: ${step.short}`}
                 className={cn(
-                  "flex shrink-0 items-center gap-2 rounded-full py-1 pr-2.5 pl-1 transition-colors outline-none",
+                  // Tall hit area on phones; the visible bar stays a hairline.
+                  "group block w-full rounded-md py-3.5 text-left outline-none sm:py-1.5",
                   "focus-visible:ring-3 focus-visible:ring-ring/50",
                   reachable ? "cursor-pointer" : "cursor-default",
-                  reachable && !active && "hover:bg-muted",
                 )}
               >
                 <span
                   className={cn(
-                    "flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold transition-colors",
-                    done && "bg-primary text-primary-foreground",
-                    active && "bg-primary/12 text-primary ring-2 ring-primary",
-                    !done && !active && "bg-muted text-muted-foreground",
+                    "block h-1 rounded-full transition-colors duration-300",
+                    reached ? "bg-foreground" : "bg-border",
+                    reachable && !reached && "bg-foreground/25 group-hover:bg-foreground/40",
                   )}
-                >
-                  {done ? <Check className="size-3.5" strokeWidth={3} /> : index + 1}
-                </span>
+                />
                 <span
                   className={cn(
-                    "text-sm whitespace-nowrap transition-colors",
+                    "mt-2 hidden truncate text-xs transition-colors sm:block",
                     active
                       ? "font-semibold text-foreground"
-                      : done
-                        ? "font-medium text-foreground/70"
-                        : "text-muted-foreground",
+                      : reachable
+                        ? "text-muted-foreground group-hover:text-foreground"
+                        : "text-muted-foreground/60",
                   )}
                 >
                   {step.short}
                 </span>
               </button>
-
-              {index < last ? (
-                <span
-                  aria-hidden
-                  className={cn(
-                    "mx-2 h-px min-w-2 flex-1 transition-colors",
-                    done ? "bg-primary/35" : "bg-border",
-                  )}
-                />
-              ) : null}
             </li>
           );
         })}

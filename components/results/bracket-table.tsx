@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+
 import { Disclosure } from "@/components/ui-extras/disclosure";
 import {
   Table,
@@ -17,21 +17,17 @@ import type { ProgressiveResult } from "@/lib/types";
  */
 export function BracketTable({
   title,
-  icon,
   result,
   emptyMessage = "No tax due at this income level.",
 }: {
   title: string;
-  icon?: ReactNode;
   result: ProgressiveResult;
   emptyMessage?: string;
 }) {
   return (
     <Disclosure
       title={title}
-      icon={icon}
       aside={<span className="tnum">{formatCurrency(result.tax)}</span>}
-      className="bg-card"
     >
       {result.slices.length === 0 ? (
         <p className="text-sm text-muted-foreground">{emptyMessage}</p>
@@ -39,11 +35,11 @@ export function BracketTable({
         <Table className="text-xs">
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead className="h-8 px-2 text-muted-foreground">Bracket</TableHead>
+              <TableHead className="h-8 pr-2 pl-0 text-muted-foreground">Bracket</TableHead>
               <TableHead className="h-8 px-2 text-right text-muted-foreground">
                 Rate
               </TableHead>
-              <TableHead className="h-8 px-2 text-right text-muted-foreground">
+              <TableHead className="hidden h-8 px-2 text-right sm:table-cell text-muted-foreground">
                 Taxed here
               </TableHead>
               <TableHead className="h-8 px-2 text-right text-muted-foreground">
@@ -54,13 +50,13 @@ export function BracketTable({
           <TableBody>
             {result.slices.map((slice) => (
               <TableRow key={`${slice.rate}-${slice.min}`}>
-                <TableCell className="tnum py-2 text-muted-foreground">
+                <TableCell className="tnum py-2 pl-0 text-muted-foreground">
                   {formatBracketRange(slice.min, slice.max)}
                 </TableCell>
                 <TableCell className="tnum py-2 text-right font-medium">
                   {formatRate(slice.rate)}
                 </TableCell>
-                <TableCell className="tnum py-2 text-right text-muted-foreground">
+                <TableCell className="tnum hidden py-2 text-right text-muted-foreground sm:table-cell">
                   {formatCurrency(slice.amountInBracket)}
                 </TableCell>
                 <TableCell className="tnum py-2 text-right font-semibold">

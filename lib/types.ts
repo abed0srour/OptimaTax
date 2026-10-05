@@ -298,6 +298,8 @@ export interface TaxComparison {
   deductibleDonation: number;
   /** Donation above the AGI ceiling, carried forward up to five years. */
   donationCarryforward: number;
+  /** Part of the gift lost to the 0.5%-of-AGI floor; 0 when the floor is off. */
+  charitableFloorAmount: number;
   agiLimitAmount: number;
   khums: KhumsBreakdown;
   /** Null once already in the lowest federal bracket — there's nowhere lower to go. */
@@ -331,4 +333,10 @@ export interface CalculatorInput {
   stateCode: string;
   deductionMode: DeductionMode;
   dependents: Dependents;
+  /**
+   * Apply the 2026 floor on itemized charitable gifts: only the part of the
+   * gift above 0.5% of AGI is deductible. Opt-in so the detailed flow, which
+   * does not model it, keeps its existing numbers.
+   */
+  applyCharitableFloor?: boolean;
 }

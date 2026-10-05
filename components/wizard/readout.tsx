@@ -3,13 +3,6 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-const toneClass = {
-  default: "border-border bg-muted/50",
-  keep: "border-keep/30 bg-keep-soft",
-  give: "border-give/30 bg-give-soft",
-  tax: "border-tax/30 bg-tax-soft",
-} as const;
-
 const valueClass = {
   default: "text-foreground",
   keep: "text-keep-ink",
@@ -17,16 +10,16 @@ const valueClass = {
   tax: "text-tax-ink",
 } as const;
 
-const labelClass = {
-  default: "text-muted-foreground",
-  keep: "text-keep-ink/70",
-  give: "text-give-ink/70",
-  tax: "text-tax-ink/70",
+const surfaceClass = {
+  default: "bg-muted",
+  keep: "bg-keep-soft",
+  give: "bg-give-soft",
+  tax: "bg-tax-soft",
 } as const;
 
 /**
- * The figure a step is building toward. Centred and oversized, because on these
- * screens it is the answer rather than a footnote.
+ * The figure a step is building toward, set large in the display face —
+ * on these screens it is the answer rather than a footnote.
  */
 export function Readout({
   label,
@@ -36,28 +29,21 @@ export function Readout({
 }: {
   label: string;
   value: string;
-  tone?: keyof typeof toneClass;
+  tone?: keyof typeof valueClass;
   action?: ReactNode;
 }) {
   return (
     <div
       className={cn(
-        "flex flex-col items-center gap-3 rounded-2xl border px-5 py-6 text-center",
-        toneClass[tone],
+        "flex flex-col items-center gap-1 rounded-2xl px-5 py-6 text-center",
+        surfaceClass[tone],
       )}
     >
-      <p
-        className={cn(
-          "text-xs font-semibold tracking-wider uppercase",
-          labelClass[tone],
-        )}
-      >
-        {label}
-      </p>
+      <p className="text-sm font-medium text-muted-foreground">{label}</p>
       {/* Steps down on narrow screens so seven-figure amounts still fit. */}
       <p
         className={cn(
-          "max-w-full text-3xl leading-none font-semibold tracking-tight wrap-break-word sm:text-4xl md:text-5xl",
+          "tnum font-display max-w-full text-[2.75rem] leading-none tracking-tight wrap-break-word sm:text-6xl",
           valueClass[tone],
         )}
       >

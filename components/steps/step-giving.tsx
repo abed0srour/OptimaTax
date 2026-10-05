@@ -1,8 +1,8 @@
 "use client";
 
-import { HandCoins, HandHeart, Moon, TrendingDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Disclosure } from "@/components/ui-extras/disclosure";
 import { ChoiceGroup } from "@/components/wizard/choice-group";
 import { MoneyField } from "@/components/wizard/money-field";
 import { StepCard, StepNav } from "@/components/wizard/step-card";
@@ -17,16 +17,19 @@ import { cn } from "@/lib/utils";
 export const DEDUCTION_MODES: {
   value: DeductionMode;
   label: string;
+  short: string;
   detail: string;
 }[] = [
   {
     value: "stacked",
     label: "Standard deduction + gift",
+    short: "Standard + gift",
     detail: "Subtracts both. Simpler, and what this project specifies.",
   },
   {
     value: "itemized",
     label: "The greater of the two",
+    short: "Greater of two",
     detail: "The real IRS rule. A gift under your standard deduction adds nothing.",
   },
 ];
@@ -58,21 +61,19 @@ export function StepGiving({
   const covered = khums.obligation > 0 && donationAmount >= khums.obligation;
   const checked = matchKhums || covered;
   const isIndicatorOnly = covered && !matchKhums;
+  const mode = DEDUCTION_MODES.find((entry) => entry.value === deductionMode);
 
   return (
     <StepCard
-      icon={<HandHeart />}
-      eyebrow="Step 4 of 5"
       title="How much will you give?"
+      subtitle="To a 501(c)(3) charity, this year."
       footer={
         <StepNav onBack={onBack} onNext={onNext} nextLabel="See my results" />
       }
     >
-      {/* 1 · The amount, and the two shortcuts for choosing one. */}
-      <div className="space-y-2.5">
+      <div className="space-y-3">
         <MoneyField
-          label="Donation to a 501(c)(3)"
-          icon={<HandCoins />}
+          label="Donation"
           value={donationText}
           onChange={onDonationChange}
           tone="give"
@@ -81,9 +82,9 @@ export function StepGiving({
 
         <label
           className={cn(
-            "flex items-center gap-3 rounded-xl border border-border bg-muted/40 px-3.5 py-2.5 transition-colors",
-            checked && "border-give/30 bg-give-soft/70",
-            isIndicatorOnly ? "cursor-default" : "cursor-pointer hover:bg-muted/70",
+            "flex min-h-12 items-center gap-3 rounded-2xl border px-4 py-3 transition-colors",
+            checked ? "border-give/40 bg-give-soft" : "border-border",
+            isIndicatorOnly ? "cursor-default" : "cursor-pointer hover:border-foreground/30",
           )}
         >
           <Checkbox
@@ -91,23 +92,17 @@ export function StepGiving({
             disabled={isIndicatorOnly}
             onCheckedChange={(value) => onMatchKhumsChange(value === true)}
           />
-          <Moon
-            className={cn(
-              "size-4 shrink-0",
-              checked ? "text-give" : "text-muted-foreground",
-            )}
-          />
           <span
             className={cn(
-              "min-w-0 flex-1 text-[0.9rem] font-medium",
-              checked ? "text-give-ink" : "text-foreground/80",
+              "min-w-0 flex-1 text-[0.95rem] font-medium",
+              checked && "text-give-ink",
             )}
           >
             {covered ? "Khums covered" : "Match my khums"}
           </span>
           <span
             className={cn(
-              "tnum shrink-0 text-[0.9rem] font-semibold whitespace-nowrap",
+              "tnum shrink-0 text-[0.95rem] font-semibold whitespace-nowrap",
               checked ? "text-give-ink" : "text-muted-foreground",
             )}
           >
@@ -118,7 +113,6 @@ export function StepGiving({
         {!matchKhums && bracketTarget ? (
           <BracketSuggestion
             target={bracketTarget}
-            hasAmount={donationAmount > 0}
             onApply={() =>
               onDonationChange(toMoneyInput(bracketTarget.targetDonation))
             }
@@ -126,139 +120,92 @@ export function StepGiving({
         ) : null}
       </div>
 
-      {/*
-       * 2 · The payoff. Previously the page asked for a number and told you
-       * nothing until the next screen; the whole point of the amount is what
-       * it does to the bill, so it belongs beside the field that sets it.
-       */}
+      {/* The payoff sits beside the field that sets it. */}
       {donationAmount > 0 ? (
-        <Impact taxSavings={taxSavings} netCostOfGiving={netCostOfGiving} />
+        <div className="grid grid-cols-2 gap-2">
+          <Figure
+            label="Tax saved"
+            value={formatCurrency(Math.max(0, taxSavings))}
+            highlight={taxSavings > 0}
+          />
+          <Figure
+            label="Real cost to you"
+            value={formatCurrency(Math.max(0, netCostOfGiving))}
+          />
+        </div>
       ) : null}
 
-      {/* 3 · The one setting that changes all of the above. */}
-      <ChoiceGroup
-        label="How the deduction works"
-        value={deductionMode}
-        onChange={(value) => onDeductionModeChange(value as DeductionMode)}
-        choices={DEDUCTION_MODES}
-        columns={2}
-      />
+      <Disclosure
+        title="Deduction method"
+        aside={<span className="hidden min-[400px]:inline">{mode?.short}</span>}
+      >
+        <ChoiceGroup
+          label="How the gift is deducted"
+          value={deductionMode}
+          onChange={(value) => onDeductionModeChange(value as DeductionMode)}
+          choices={DEDUCTION_MODES}
+          columns={1}
+        />
+      </Disclosure>
     </StepCard>
   );
 }
 
-/**
- * The gift's effect, in the two numbers people actually weigh: what it saves,
- * and what it therefore costs.
- */
-function Impact({
-  taxSavings,
-  netCostOfGiving,
+function Figure({
+  label,
+  value,
+  highlight = false,
 }: {
-  taxSavings: number;
-  netCostOfGiving: number;
+  label: string;
+  value: string;
+  highlight?: boolean;
 }) {
-  const saved = taxSavings > 0;
-
   return (
     <div
       className={cn(
-        "rounded-xl border px-4 py-3.5",
-        saved ? "border-keep/30 bg-keep-soft" : "border-border bg-muted/40",
+        "min-w-0 rounded-2xl px-4 py-3.5",
+        highlight ? "bg-keep-soft" : "bg-muted",
       )}
     >
+      <p className="text-[0.8rem] text-muted-foreground">{label}</p>
       <p
         className={cn(
-          "text-[0.7rem] font-semibold tracking-wider uppercase",
-          saved ? "text-keep-ink/70" : "text-muted-foreground",
+          "tnum font-display mt-1 text-[1.9rem] leading-none tracking-tight wrap-break-word sm:text-4xl",
+          highlight && "text-keep-ink",
         )}
       >
-        What this gift does
+        {value}
       </p>
-
-      <div className="mt-2 flex items-baseline justify-between gap-3">
-        <span
-          className={cn(
-            "min-w-0 text-[0.9rem]",
-            saved ? "text-keep-ink/80" : "text-foreground/70",
-          )}
-        >
-          Tax saved
-        </span>
-        <span
-          className={cn(
-            "shrink-0 text-2xl leading-none font-semibold tracking-tight whitespace-nowrap",
-            saved ? "text-keep-ink" : "text-muted-foreground",
-          )}
-        >
-          {formatCurrency(Math.max(0, taxSavings))}
-        </span>
-      </div>
-
-      <div
-        className={cn(
-          "mt-2.5 flex items-baseline justify-between gap-3 border-t pt-2.5",
-          saved ? "border-keep/20" : "border-border",
-        )}
-      >
-        <span
-          className={cn(
-            "min-w-0 text-[0.9rem]",
-            saved ? "text-keep-ink/80" : "text-foreground/70",
-          )}
-        >
-          The gift really costs you
-        </span>
-        <span className="tnum shrink-0 text-[0.95rem] font-semibold whitespace-nowrap">
-          {formatCurrency(Math.max(0, netCostOfGiving))}
-        </span>
-      </div>
     </div>
   );
 }
 
-/**
- * The amount that lands taxable income on a bracket floor.
- *
- * Leads with the total to give rather than the increment: the button sets an
- * absolute amount, and showing "give $28,200 more" beside a "Use $78,200"
- * button left the reader with two numbers and no idea which one the button
- * meant. The increment is now context, in the same sentence.
- */
+/** The total gift that lands taxable income on a lower bracket's floor. */
 function BracketSuggestion({
   target,
-  hasAmount,
   onApply,
 }: {
   target: NonNullable<TaxComparison["bracketTarget"]>;
-  hasAmount: boolean;
   onApply: () => void;
 }) {
   return (
-    /* Stacks on phones so the sentence never gets squeezed against the button. */
-    <div className="flex flex-col gap-2 rounded-xl border border-border bg-muted/40 px-3.5 py-2.5 sm:flex-row sm:items-center sm:gap-3">
-      <span className="flex min-w-0 flex-1 items-start gap-3">
-        <TrendingDown className="mt-0.5 size-4 shrink-0 text-keep" />
-        <span className="min-w-0 text-[0.85rem] leading-snug text-foreground/80">
-          Give {formatCurrency(target.targetDonation)}
-          {hasAmount ? (
-            <> — {formatCurrency(target.additionalDonationNeeded)} more —</>
-          ) : null}{" "}
-          to drop your top federal rate from{" "}
-          <span className="font-semibold">{formatRate(target.currentRate)}</span>{" "}
-          to <span className="font-semibold">{formatRate(target.targetRate)}</span>
-          .
-        </span>
-      </span>
-
+    <div className="flex flex-col gap-3 rounded-2xl bg-muted px-4 py-3 sm:flex-row sm:items-center">
+      <p className="min-w-0 flex-1 text-sm leading-snug text-muted-foreground">
+        Give{" "}
+        <span className="tnum font-semibold text-foreground">
+          {formatCurrency(target.targetDonation)}
+        </span>{" "}
+        to drop your top federal rate from {formatRate(target.currentRate)} to{" "}
+        {formatRate(target.targetRate)}.
+      </p>
       <Button
         type="button"
         variant="outline"
-        size="xs"
+        size="sm"
         onClick={onApply}
-        className="ml-7 self-start sm:ml-0 sm:shrink-0 sm:self-auto"
+        className="h-9 self-start rounded-full bg-card px-4 sm:self-auto"
       >
-        Use it
+        Use this amount
       </Button>
     </div>
   );

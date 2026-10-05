@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useMemo, useRef, useState } from "react";
-import { Check, MapPin, Search } from "lucide-react";
+import { Check, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { states } from "@/lib/taxData";
@@ -86,7 +86,7 @@ export function StateSearch({
 
   return (
     <div className="space-y-2">
-      <Label htmlFor={inputId} className="text-[0.9rem] font-medium">
+      <Label htmlFor={inputId} className="text-sm font-medium">
         {label}
       </Label>
 
@@ -125,7 +125,8 @@ export function StateSearch({
             setQuery(selected?.name ?? "");
           }}
           onKeyDown={onKeyDown}
-          className="h-12 rounded-xl bg-card pr-3 pl-10 text-[0.95rem] font-medium md:text-[0.95rem]"
+          // 16px keeps iOS from zooming the page when the field takes focus.
+          className="h-12 rounded-2xl bg-card pr-3 pl-10 text-base font-medium focus-visible:border-foreground focus-visible:ring-foreground/10 md:text-base"
         />
       </div>
 
@@ -134,7 +135,7 @@ export function StateSearch({
           id={listId}
           role="listbox"
           aria-label="Matching states"
-          className="show-scrollbar max-h-60 overflow-y-auto overscroll-contain rounded-xl border border-border bg-card p-1"
+          className="show-scrollbar max-h-64 overflow-y-auto overscroll-contain rounded-2xl border border-border bg-card p-1"
         >
           {matches.length === 0 ? (
             <li className="px-3 py-2.5 text-sm text-muted-foreground">
@@ -159,11 +160,10 @@ export function StateSearch({
                     }}
                     onMouseEnter={() => setActive(index)}
                     className={cn(
-                      "flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm transition-colors",
+                      "flex min-h-11 w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-[0.95rem] transition-colors",
                       isActive ? "bg-muted" : "bg-transparent",
                     )}
                   >
-                    <MapPin className="size-4 shrink-0 text-muted-foreground" />
                     <span className="min-w-0 flex-1 truncate font-medium">
                       {state.name}
                     </span>
@@ -171,7 +171,7 @@ export function StateSearch({
                       {state.code}
                     </span>
                     {isSelected ? (
-                      <Check className="size-4 shrink-0 text-primary" strokeWidth={3} />
+                      <Check className="size-4 shrink-0 text-keep" strokeWidth={3} />
                     ) : null}
                   </button>
                 </li>

@@ -1,20 +1,12 @@
 "use client";
 
-import {
-  ArrowLeft,
-  Landmark,
-  MapPin,
-  RotateCcw,
-  TrendingDown,
-  TriangleAlert,
-} from "lucide-react";
+import { ArrowLeft, RotateCcw } from "lucide-react";
 import { BracketTable } from "@/components/results/bracket-table";
 import { FederalBreakdown } from "@/components/results/federal-breakdown";
 import { KhumsCoverage } from "@/components/results/khums-coverage";
 import { TaxChart } from "@/components/results/tax-chart";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Note } from "@/components/wizard/note";
 import { formatCurrency, formatPercent } from "@/lib/format";
 import { federalTax } from "@/lib/taxData";
 import type { TaxComparison } from "@/lib/types";
@@ -31,19 +23,25 @@ export function StepResults({
 }) {
   const {
     khums,
+    scenarioA,
     scenarioB,
     taxSavings,
     stateEntry,
     donationEntered,
     donationCarryforward,
+    charitableFloorAmount,
     agiLimitAmount,
     stateAllowsCharitableDeduction,
   } = comparison;
 
-  const better = taxSavings > 0;
+  const scenario = taxSavings > 0 ? scenarioB : scenarioA;
+  const stateNoDeduction =
+    donationEntered > 0 &&
+    !stateAllowsCharitableDeduction &&
+    stateEntry.tax_type !== "none";
 
   return (
-    <div className="animate-step-in space-y-4">
+    <div className="animate-step-in space-y-3">
       <Verdict comparison={comparison} />
 
       <TaxChart comparison={comparison} />
@@ -52,67 +50,58 @@ export function StepResults({
         <KhumsCoverage khums={khums} donation={donationEntered} />
       ) : null}
 
-      {donationCarryforward > 0 ? (
-        <Alert>
-          <TriangleAlert className="text-note-ink" />
-          <AlertTitle>Part of the gift carries forward</AlertTitle>
-          <AlertDescription>
-            Cash gifts are deductible up to{" "}
-            {formatPercent(
-              federalTax.charitable_deduction_limits.cash_public_charity_agi_limit,
-              0,
-            )}{" "}
-            of income — {formatCurrency(agiLimitAmount)} here. The remaining{" "}
-            {formatCurrency(donationCarryforward)} carries forward up to five years.
-          </AlertDescription>
-        </Alert>
+      {donationCarryforward > 0 || stateNoDeduction || charitableFloorAmount > 0 ? (
+        <div className="space-y-2 px-1 py-2">
+          {charitableFloorAmount > 0 ? (
+            <Note>
+              The first {formatCurrency(charitableFloorAmount)} of your gift (0.5%
+              of income) isn&apos;t deductible under the 2026 floor.
+            </Note>
+          ) : null}
+          {donationCarryforward > 0 ? (
+            <Note>
+              Cash gifts are deductible up to{" "}
+              {formatPercent(
+                federalTax.charitable_deduction_limits.cash_public_charity_agi_limit,
+                0,
+              )}{" "}
+              of income ({formatCurrency(agiLimitAmount)}). The other{" "}
+              {formatCurrency(donationCarryforward)} carries forward up to five
+              years.
+            </Note>
+          ) : null}
+          {stateNoDeduction ? (
+            <Note>
+              {stateEntry.name} allows no charitable deduction, so the gift
+              lowers your federal tax only.
+            </Note>
+          ) : null}
+        </div>
       ) : null}
 
-      {donationEntered > 0 &&
-      !stateAllowsCharitableDeduction &&
-      stateEntry.tax_type !== "none" ? (
-        <Alert>
-          <TriangleAlert className="text-note-ink" />
-          <AlertTitle>{stateEntry.name} allows no charitable deduction</AlertTitle>
-          <AlertDescription>
-            The donation lowers your federal bill only.
-          </AlertDescription>
-        </Alert>
-      ) : null}
-
-      <div className="space-y-2">
-        <FederalBreakdown
-          scenario={better ? scenarioB : comparison.scenarioA}
-        />
-        <BracketTable
-          title="Federal brackets"
-          icon={<Landmark />}
-          result={better ? scenarioB.federal : comparison.scenarioA.federal}
-        />
+      <div className="space-y-2 pt-2">
+        <h2 className="px-1 text-sm font-medium text-muted-foreground">Details</h2>
+        <FederalBreakdown scenario={scenario} />
+        <BracketTable title="Federal brackets" result={scenario.federal} />
         {stateEntry.tax_type !== "none" ? (
-          <BracketTable
-            title={`${stateEntry.name} brackets`}
-            icon={<MapPin />}
-            result={better ? scenarioB.state : comparison.scenarioA.state}
-          />
+          <BracketTable title={`${stateEntry.name} brackets`} result={scenario.state} />
         ) : null}
       </div>
 
-      <div className="flex flex-col gap-2 pt-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={onBack}
-          className="h-10 w-full px-3 text-[0.9rem] sm:w-auto"
-        >
-          <ArrowLeft data-icon="inline-start" />
-          Change my answers
-        </Button>
+      <div className="grid grid-cols-2 gap-2 pt-4 sm:flex sm:justify-between">
         <Button
           type="button"
           variant="outline"
+          onClick={onBack}
+          className="h-12 rounded-full bg-card px-5 text-[0.95rem] sm:h-11"
+        >
+          <ArrowLeft data-icon="inline-start" />
+          Edit
+        </Button>
+        <Button
+          type="button"
           onClick={onRestart}
-          className="h-10 w-full px-4 text-[0.9rem] sm:w-auto"
+          className="h-12 rounded-full px-5 text-[0.95rem] sm:h-11"
         >
           <RotateCcw data-icon="inline-start" />
           Start over
@@ -124,46 +113,37 @@ export function StepResults({
 
 /** Names the winner outright, so nobody has to compare two bars to find it. */
 function Verdict({ comparison }: { comparison: TaxComparison }) {
-  const { taxSavings, donationEntered, netCostOfGiving } = comparison;
+  const { taxSavings, donationEntered, netCostOfGiving, scenarioA } = comparison;
   const better = taxSavings > 0;
 
   return (
-    <Card
+    <section
+      aria-labelledby="step-title"
       className={cn(
-        "rounded-2xl shadow-sm [--card-spacing:--spacing(6)]",
-        better ? "bg-keep-soft ring-keep/25" : "ring-foreground/8",
+        "rounded-[1.75rem] border px-5 py-7 sm:px-8 sm:py-9",
+        better ? "border-keep/25 bg-keep-soft" : "border-border bg-card",
       )}
     >
-      <CardContent className="space-y-2">
-        <p className="flex items-center gap-2 text-[0.8rem] font-semibold tracking-wider text-muted-foreground uppercase">
-          {better ? <TrendingDown className="size-4 shrink-0 text-keep" /> : null}
-          {better ? "Better option · with donation" : "Both options cost the same"}
-        </p>
+      <h1 id="step-title" className="text-sm font-medium text-muted-foreground">
+        {better ? "Giving saves you" : donationEntered > 0 ? "No tax saved" : "Your total tax"}
+      </h1>
 
-        {better ? (
-          <>
-            <p className="text-[0.95rem] font-medium text-foreground/70">You saved</p>
-            <p className="max-w-full text-4xl leading-none font-semibold tracking-tight wrap-break-word text-keep-ink sm:text-5xl md:text-6xl">
-              {formatCurrency(taxSavings)}
-            </p>
-            <p className="max-w-prose text-[0.95rem] leading-relaxed text-foreground/80">
-              by donating {formatCurrency(donationEntered)} to a 501(c)(3). The gift
-              really costs you {formatCurrency(Math.max(0, netCostOfGiving))}.
-            </p>
-          </>
-        ) : (
-          <>
-            <p className="max-w-full text-4xl leading-none font-semibold tracking-tight wrap-break-word sm:text-5xl md:text-6xl">
-              {formatCurrency(taxSavings)}
-            </p>
-            <p className="max-w-prose text-[0.95rem] leading-relaxed text-foreground/80">
-              {donationEntered > 0
-                ? "The gift does not lower this bill — taxable income is already at or below zero, or your state grants no charitable deduction."
-                : "No donation entered, so there is nothing to compare yet."}
-            </p>
-          </>
+      <p
+        className={cn(
+          "tnum font-display mt-2 max-w-full text-[3.25rem] leading-[0.95] tracking-tight wrap-break-word sm:text-7xl",
+          better && "text-keep-ink",
         )}
-      </CardContent>
-    </Card>
+      >
+        {formatCurrency(better ? taxSavings : scenarioA.totalTax)}
+      </p>
+
+      <p className="mt-4 max-w-prose text-[0.95rem] leading-relaxed text-muted-foreground">
+        {better
+          ? `on a ${formatCurrency(donationEntered)} gift — so it really costs you ${formatCurrency(Math.max(0, netCostOfGiving))}.`
+          : donationEntered > 0
+            ? "The gift doesn't lower this bill — taxable income is already zero, or your state grants no charitable deduction."
+            : "Federal and state, with no donation."}
+      </p>
+    </section>
   );
 }
