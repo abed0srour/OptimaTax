@@ -1,17 +1,27 @@
 "use client";
 
 import { Info } from "lucide-react";
+import { Disclosure } from "@/components/ui-extras/disclosure";
 import { ChoiceGroup } from "@/components/wizard/choice-group";
 import { MoneyField } from "@/components/wizard/money-field";
-import { Note } from "@/components/wizard/note";
 import { StateSearch } from "@/components/wizard/state-search";
 import { StepCard, StepNav } from "@/components/wizard/step-card";
 import { formatCurrency, formatPercent, parseMoney } from "@/lib/format";
 import { calculateCharitableLimit } from "@/lib/tax";
 import { filingStatuses } from "@/lib/taxData";
-import type { CharityType, FilingStatus, PropertyType } from "@/lib/types";
+import type {
+  CharitableLimit,
+  CharityType,
+  FilingStatus,
+  PropertyType,
+} from "@/lib/types";
+import { cn } from "@/lib/utils";
 
-/** The whole quick estimate on one screen, then straight to results. */
+/**
+ * The whole quick estimate on one screen. Income and the gift come first and
+ * are all most people need; who it goes to, where you live and the rarely used
+ * itemized-deductions field follow in the order they matter.
+ */
 export function StepQuick({
   agiText,
   itemizedText,
@@ -47,108 +57,117 @@ export function StepQuick({
 }) {
   const agi = parseMoney(agiText);
   const donation = parseMoney(donationText);
+  const itemized = parseMoney(itemizedText);
   const limit = calculateCharitableLimit(donation, agi, charityType, propertyType);
 
   return (
     <StepCard
       title="Quick estimate"
       subtitle="Use last year's figures, or your best guess for this year."
-      footer={<StepNav onNext={onNext} nextLabel="See results" />}
+      footer={
+        <StepNav
+          onNext={onNext}
+          // The disabled button says why, so no separate warning is needed.
+          nextLabel={agi > 0 ? "See results" : "Enter your income"}
+          nextDisabled={agi <= 0}
+        />
+      }
     >
-      <MoneyField
-        label="Adjusted gross income (AGI)"
-        value={agiText}
-        onChange={onAgiChange}
-        placeholder="85,000"
-      />
+      <div className="space-y-5">
+        <MoneyField
+          label="Income (AGI)"
+          value={agiText}
+          onChange={onAgiChange}
+          placeholder="85,000"
+        />
 
-      <MoneyField
-        label="Other itemized deductions"
-        value={itemizedText}
-        onChange={onItemizedChange}
-        placeholder="0"
-        size="md"
-      />
+        <MoneyField
+          label="Gift or khums amount"
+          value={donationText}
+          onChange={onDonationChange}
+          tone="give"
+        />
+      </div>
 
-      <ChoiceGroup
-        label="Filing status"
-        value={filingStatus}
-        onChange={(value) => onFilingStatusChange(value as FilingStatus)}
-        choices={filingStatuses.map((status) => ({
-          value: status.id,
-          label: status.label,
-        }))}
-      />
+      <div className="space-y-4">
+        <ChoiceGroup<CharityType>
+          label="Who receives it"
+          value={charityType}
+          onChange={onCharityTypeChange}
+          choices={[
+            { value: "public", label: "Public charity", detail: "Church, mosque, 501(c)(3)" },
+            { value: "private", label: "Private foundation" },
+          ]}
+        />
 
-      <StateSearch
-        label="State you live in"
-        value={stateCode}
-        onChange={onStateChange}
-      />
+        <ChoiceGroup<PropertyType>
+          label="What you're giving"
+          value={propertyType}
+          onChange={onPropertyTypeChange}
+          choices={[
+            { value: "cash", label: "Cash" },
+            {
+              value: "appreciated_property",
+              label: "Appreciated property",
+              detail: "Held over a year",
+            },
+          ]}
+        />
 
-      <MoneyField
-        label="Charitable gift / khums amount"
-        value={donationText}
-        onChange={onDonationChange}
-        tone="give"
-      />
+        <LimitFeedback agi={agi} donation={donation} limit={limit} />
 
-      <ChoiceGroup<CharityType>
-        label="Who receives the gift"
-        value={charityType}
-        onChange={onCharityTypeChange}
-        columns={1}
-        choices={[
-          {
-            value: "public",
-            label: "Public charity, church or mosque",
-            detail: "Most 501(c)(3) organizations",
-          },
-          {
-            value: "private",
-            label: "Private foundation",
-            detail: "Lower ceilings apply",
-          },
-        ]}
-      />
-
-      <ChoiceGroup<PropertyType>
-        label="What you're giving"
-        value={propertyType}
-        onChange={onPropertyTypeChange}
-        choices={[
-          { value: "cash", label: "Cash" },
-          {
-            value: "appreciated_property",
-            label: "Appreciated property",
-            detail: "Held over a year",
-          },
-        ]}
-      />
-
-      <div
-        role="note"
-        className="flex gap-3 rounded-2xl border border-note/30 bg-note-soft px-4 py-3 text-sm leading-relaxed text-note-ink"
-      >
-        <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
-        <p>
-          In general, US churches and mosques are public charities, but verify
-          the foundation&apos;s official IRS classification. Your deduction is
-          capped based on your selection.
+        <p
+          role="note"
+          className="flex gap-2.5 text-sm leading-relaxed text-muted-foreground"
+        >
+          <Info aria-hidden className="mt-0.5 size-4 shrink-0 text-note-ink" />
+          <span>
+            In general, US churches and mosques are public charities, but
+            verify the foundation&apos;s official IRS classification. Your
+            deduction is capped based on your selection.
+          </span>
         </p>
       </div>
 
-      <LimitFeedback
-        agi={agi}
-        donation={donation}
-        limit={limit}
-      />
+      <div className="space-y-5">
+        <ChoiceGroup
+          label="Filing status"
+          value={filingStatus}
+          onChange={(value) => onFilingStatusChange(value as FilingStatus)}
+          choices={filingStatuses.map((status) => ({
+            value: status.id,
+            label: status.label,
+          }))}
+        />
 
-      <Note>
-        Taxed as ordinary income, with no payroll tax or dependents. Only the
-        part of your gift above 0.5% of income is deductible, and only if
-        itemizing beats the standard deduction.
-      </Note>
+        <StateSearch
+          label="State you live in"
+          value={stateCode}
+          onChange={onStateChange}
+        />
+      </div>
+
+      <Disclosure
+        title="Other itemized deductions"
+        aside={
+          itemized > 0 ? <span className="tnum">{formatCurrency(itemized)}</span> : null
+        }
+        defaultOpen={itemized > 0}
+      >
+        <div className="space-y-3">
+          <MoneyField
+            label="Mortgage interest, state taxes, medical…"
+            value={itemizedText}
+            onChange={onItemizedChange}
+            placeholder="0"
+            size="md"
+          />
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            Your gift only lowers your tax once these plus the gift beat the
+            standard deduction. Leave blank if unsure.
+          </p>
+        </div>
+      </Disclosure>
     </StepCard>
   );
 }
@@ -161,26 +180,37 @@ function LimitFeedback({
 }: {
   agi: number;
   donation: number;
-  limit: ReturnType<typeof calculateCharitableLimit>;
+  limit: CharitableLimit;
 }) {
   const over = limit.carryforward > 0;
+  const judged = agi > 0 && donation > 0;
 
   return (
     <div
       aria-live="polite"
-      className="rounded-2xl border border-border px-4 py-3 text-sm leading-relaxed"
+      className={cn(
+        "rounded-2xl px-4 py-3",
+        judged ? (over ? "bg-tax-soft" : "bg-keep-soft") : "bg-muted",
+      )}
     >
-      <p className="text-muted-foreground">
-        Deduction ceiling ({formatPercent(limit.rate, 0)} of AGI)
-      </p>
-      <p className="tnum font-display text-2xl tracking-tight">
-        {agi > 0 ? formatCurrency(limit.ceiling) : "Enter your AGI"}
-      </p>
+      <div className="flex items-baseline justify-between gap-3">
+        <p className="min-w-0 text-sm text-muted-foreground">
+          Deduction ceiling · {formatPercent(limit.rate, 0)} of AGI
+        </p>
+        <p className="tnum shrink-0 font-semibold whitespace-nowrap">
+          {agi > 0 ? formatCurrency(limit.ceiling) : "—"}
+        </p>
+      </div>
 
-      {agi > 0 && donation > 0 ? (
-        <p className={over ? "mt-1 text-tax-ink" : "mt-1 text-keep-ink"}>
+      {judged ? (
+        <p
+          className={cn(
+            "mt-1 text-sm leading-snug",
+            over ? "text-tax-ink" : "text-keep-ink",
+          )}
+        >
           {over
-            ? `Your gift is ${formatCurrency(limit.carryforward)} over the limit. That part carries forward up to five years.`
+            ? `${formatCurrency(limit.carryforward)} over the limit — that part carries forward up to five years.`
             : "Your gift is within the limit."}
         </p>
       ) : null}

@@ -43,12 +43,6 @@ export function StepResults({
     <div className="animate-step-in space-y-3">
       <Verdict comparison={comparison} />
 
-      <TaxChart comparison={comparison} />
-
-      {khums.obligation > 0 ? (
-        <KhumsCoverage khums={khums} donation={donationEntered} />
-      ) : null}
-
       {donationCarryforward > 0 || stateNoDeduction || charitableFloorAmount > 0 ? (
         <div className="space-y-2 px-1 py-2">
           {charitableFloorAmount > 0 ? (
@@ -73,6 +67,12 @@ export function StepResults({
             </Note>
           ) : null}
         </div>
+      ) : null}
+
+      <TaxChart comparison={comparison} />
+
+      {khums.obligation > 0 ? (
+        <KhumsCoverage khums={khums} donation={donationEntered} />
       ) : null}
 
       <div className="space-y-2 pt-2">

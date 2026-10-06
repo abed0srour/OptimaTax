@@ -24,13 +24,13 @@ export const DEDUCTION_MODES: {
     value: "stacked",
     label: "Standard deduction + gift",
     short: "Standard + gift",
-    detail: "Subtracts both. Simpler, and what this project specifies.",
+    detail: "Subtracts both. Simpler, but shows more savings than the IRS rule.",
   },
   {
     value: "itemized",
     label: "The greater of the two",
     short: "Greater of two",
-    detail: "The real IRS rule. A gift under your standard deduction adds nothing.",
+    detail: "How the IRS works. A gift smaller than your standard deduction saves nothing.",
   },
 ];
 
