@@ -18,134 +18,89 @@ import type {
 import { cn } from "@/lib/utils";
 
 /**
- * The whole quick estimate on one screen. Income and the gift come first and
- * are all most people need; who it goes to, where you live and the rarely used
- * itemized-deductions field follow in the order they matter.
+ * Quick Estimate as three short steps — You, Income, Gift — before the shared
+ * results screen. Each asks one thing, so nothing needs scrolling on a phone.
  */
-export function StepQuick({
-  agiText,
-  itemizedText,
-  donationText,
-  charityType,
-  propertyType,
+
+export const QUICK_STEPS = [
+  { id: "place", short: "You", title: "About you" },
+  { id: "income", short: "Income", title: "Your income" },
+  { id: "gift", short: "Gift", title: "Your gift" },
+  { id: "results", short: "Results", title: "Your results" },
+];
+
+export function StepQuickPlace({
   filingStatus,
   stateCode,
-  onAgiChange,
-  onItemizedChange,
-  onDonationChange,
-  onCharityTypeChange,
-  onPropertyTypeChange,
   onFilingStatusChange,
   onStateChange,
   onNext,
 }: {
-  agiText: string;
-  itemizedText: string;
-  donationText: string;
-  charityType: CharityType;
-  propertyType: PropertyType;
   filingStatus: FilingStatus;
   stateCode: string;
-  onAgiChange: (value: string) => void;
-  onItemizedChange: (value: string) => void;
-  onDonationChange: (value: string) => void;
-  onCharityTypeChange: (value: CharityType) => void;
-  onPropertyTypeChange: (value: PropertyType) => void;
   onFilingStatusChange: (status: FilingStatus) => void;
   onStateChange: (code: string) => void;
   onNext: () => void;
 }) {
+  return (
+    <StepCard title="About you" footer={<StepNav onNext={onNext} />}>
+      <StateSearch
+        label="State you live in"
+        value={stateCode}
+        onChange={onStateChange}
+      />
+
+      <ChoiceGroup
+        label="Filing status"
+        value={filingStatus}
+        onChange={(value) => onFilingStatusChange(value as FilingStatus)}
+        choices={filingStatuses.map((status) => ({
+          value: status.id,
+          label: status.label,
+        }))}
+      />
+    </StepCard>
+  );
+}
+
+export function StepQuickIncome({
+  agiText,
+  itemizedText,
+  onAgiChange,
+  onItemizedChange,
+  onBack,
+  onNext,
+}: {
+  agiText: string;
+  itemizedText: string;
+  onAgiChange: (value: string) => void;
+  onItemizedChange: (value: string) => void;
+  onBack: () => void;
+  onNext: () => void;
+}) {
   const agi = parseMoney(agiText);
-  const donation = parseMoney(donationText);
   const itemized = parseMoney(itemizedText);
-  const limit = calculateCharitableLimit(donation, agi, charityType, propertyType);
 
   return (
     <StepCard
-      title="Quick estimate"
-      subtitle="Use last year's figures, or your best guess for this year."
+      title="Your income"
+      subtitle="Last year's figure, or your best guess for this year."
       footer={
         <StepNav
+          onBack={onBack}
           onNext={onNext}
           // The disabled button says why, so no separate warning is needed.
-          nextLabel={agi > 0 ? "See results" : "Enter your income"}
+          nextLabel={agi > 0 ? "Continue" : "Enter your income"}
           nextDisabled={agi <= 0}
         />
       }
     >
-      <div className="space-y-5">
-        <MoneyField
-          label="Income (AGI)"
-          value={agiText}
-          onChange={onAgiChange}
-          placeholder="85,000"
-        />
-
-        <MoneyField
-          label="Gift or khums amount"
-          value={donationText}
-          onChange={onDonationChange}
-          tone="give"
-        />
-      </div>
-
-      <div className="space-y-4">
-        <ChoiceGroup<CharityType>
-          label="Who receives it"
-          value={charityType}
-          onChange={onCharityTypeChange}
-          choices={[
-            { value: "public", label: "Public charity", detail: "Church, mosque, 501(c)(3)" },
-            { value: "private", label: "Private foundation" },
-          ]}
-        />
-
-        <ChoiceGroup<PropertyType>
-          label="What you're giving"
-          value={propertyType}
-          onChange={onPropertyTypeChange}
-          choices={[
-            { value: "cash", label: "Cash" },
-            {
-              value: "appreciated_property",
-              label: "Appreciated property",
-              detail: "Held over a year",
-            },
-          ]}
-        />
-
-        <LimitFeedback agi={agi} donation={donation} limit={limit} />
-
-        <p
-          role="note"
-          className="flex gap-2.5 text-sm leading-relaxed text-muted-foreground"
-        >
-          <Info aria-hidden className="mt-0.5 size-4 shrink-0 text-note-ink" />
-          <span>
-            In general, US churches and mosques are public charities, but
-            verify the foundation&apos;s official IRS classification. Your
-            deduction is capped based on your selection.
-          </span>
-        </p>
-      </div>
-
-      <div className="space-y-5">
-        <ChoiceGroup
-          label="Filing status"
-          value={filingStatus}
-          onChange={(value) => onFilingStatusChange(value as FilingStatus)}
-          choices={filingStatuses.map((status) => ({
-            value: status.id,
-            label: status.label,
-          }))}
-        />
-
-        <StateSearch
-          label="State you live in"
-          value={stateCode}
-          onChange={onStateChange}
-        />
-      </div>
+      <MoneyField
+        label="Adjusted gross income (AGI)"
+        value={agiText}
+        onChange={onAgiChange}
+        placeholder="85,000"
+      />
 
       <Disclosure
         title="Other itemized deductions"
@@ -168,6 +123,87 @@ export function StepQuick({
           </p>
         </div>
       </Disclosure>
+    </StepCard>
+  );
+}
+
+export function StepQuickGift({
+  agiText,
+  donationText,
+  charityType,
+  propertyType,
+  onDonationChange,
+  onCharityTypeChange,
+  onPropertyTypeChange,
+  onBack,
+  onNext,
+}: {
+  agiText: string;
+  donationText: string;
+  charityType: CharityType;
+  propertyType: PropertyType;
+  onDonationChange: (value: string) => void;
+  onCharityTypeChange: (value: CharityType) => void;
+  onPropertyTypeChange: (value: PropertyType) => void;
+  onBack: () => void;
+  onNext: () => void;
+}) {
+  const agi = parseMoney(agiText);
+  const donation = parseMoney(donationText);
+  const limit = calculateCharitableLimit(donation, agi, charityType, propertyType);
+
+  return (
+    <StepCard
+      title="Your gift"
+      subtitle="Who it goes to decides how much you can deduct."
+      footer={<StepNav onBack={onBack} onNext={onNext} nextLabel="See results" />}
+    >
+      <MoneyField
+        label="Gift or khums amount"
+        value={donationText}
+        onChange={onDonationChange}
+        tone="give"
+      />
+
+      <ChoiceGroup<CharityType>
+        label="Who receives it"
+        value={charityType}
+        onChange={onCharityTypeChange}
+        choices={[
+          { value: "public", label: "Public charity", detail: "Church, mosque, 501(c)(3)" },
+          { value: "private", label: "Private foundation" },
+        ]}
+      />
+
+      <ChoiceGroup<PropertyType>
+        label="What you're giving"
+        value={propertyType}
+        onChange={onPropertyTypeChange}
+        choices={[
+          { value: "cash", label: "Cash" },
+          {
+            value: "appreciated_property",
+            label: "Appreciated property",
+            detail: "Held over a year",
+          },
+        ]}
+      />
+
+      <div className="space-y-4">
+        <LimitFeedback agi={agi} donation={donation} limit={limit} />
+
+        <p
+          role="note"
+          className="flex gap-2.5 text-sm leading-relaxed text-muted-foreground"
+        >
+          <Info aria-hidden className="mt-0.5 size-4 shrink-0 text-note-ink" />
+          <span>
+            In general, US churches and mosques are public charities, but
+            verify the foundation&apos;s official IRS classification. Your
+            deduction is capped based on your selection.
+          </span>
+        </p>
+      </div>
     </StepCard>
   );
 }

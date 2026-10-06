@@ -6,7 +6,12 @@ import logo from "@/public/logo.png";
 import { StepGiving } from "@/components/steps/step-giving";
 import { StepIncome, type IncomeText } from "@/components/steps/step-income";
 import { StepPlace } from "@/components/steps/step-place";
-import { StepQuick } from "@/components/steps/step-quick";
+import {
+  QUICK_STEPS,
+  StepQuickGift,
+  StepQuickIncome,
+  StepQuickPlace,
+} from "@/components/steps/step-quick";
 import { StepResults } from "@/components/steps/step-results";
 import { StepTax } from "@/components/steps/step-tax";
 import { ModeToggle, type WizardMode } from "@/components/wizard/mode-toggle";
@@ -66,7 +71,8 @@ export default function Home() {
 
   // Quick estimate keeps its own answers and screen; only state and filing
   // status are shared with the detailed flow, since they mean the same thing.
-  const [quickResults, setQuickResults] = useState(false);
+  const [quickStep, setQuickStep] = useState(0);
+  const [quickFurthest, setQuickFurthest] = useState(0);
   const [quickAgiText, setQuickAgiText] = useState("");
   const [quickItemizedText, setQuickItemizedText] = useState("");
   const [quickDonationText, setQuickDonationText] = useState("");
@@ -162,8 +168,10 @@ export default function Home() {
     ],
   );
 
-  function showQuickResults(show: boolean) {
-    setQuickResults(show);
+  function goToQuick(index: number) {
+    const next = Math.min(Math.max(index, 0), QUICK_STEPS.length - 1);
+    setQuickStep(next);
+    setQuickFurthest((current) => Math.max(current, next));
     if (typeof window !== "undefined") {
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
@@ -192,7 +200,8 @@ export default function Home() {
     setQuickDonationText("");
     setQuickCharityType("public");
     setQuickPropertyType("cash");
-    setQuickResults(false);
+    setQuickStep(0);
+    setQuickFurthest(0);
     setFurthest(0);
     setStep(0);
     if (typeof window !== "undefined") {
@@ -209,43 +218,65 @@ export default function Home() {
           <ModeToggle value={mode} onChange={setMode} />
         </div>
 
-        {mode === "quick" ? (
-          quickResults ? (
-            <StepResults
-              comparison={quickComparison}
-              onBack={() => showQuickResults(false)}
-              onRestart={restart}
+        <div className="mb-5 sm:mb-6">
+          {mode === "quick" ? (
+            <Stepper
+              steps={QUICK_STEPS}
+              current={quickStep}
+              furthest={quickFurthest}
+              onJump={goToQuick}
             />
           ) : (
-            <StepQuick
-              agiText={quickAgiText}
-              itemizedText={quickItemizedText}
-              donationText={quickDonationText}
-              charityType={quickCharityType}
-              propertyType={quickPropertyType}
-              filingStatus={filingStatus}
-              stateCode={stateCode}
-              onAgiChange={setQuickAgiText}
-              onItemizedChange={setQuickItemizedText}
-              onDonationChange={setQuickDonationText}
-              onCharityTypeChange={setQuickCharityType}
-              onPropertyTypeChange={setQuickPropertyType}
-              onFilingStatusChange={setFilingStatus}
-              onStateChange={setStateCode}
-              onNext={() => showQuickResults(true)}
-            />
-          )
-        ) : null}
-
-        {mode === "detailed" ? (
-          <div className="mb-5 sm:mb-6">
             <Stepper
               steps={STEPS}
               current={step}
               furthest={furthest}
               onJump={goTo}
             />
-          </div>
+          )}
+        </div>
+
+        {mode === "quick" && quickStep === 0 ? (
+          <StepQuickPlace
+            filingStatus={filingStatus}
+            stateCode={stateCode}
+            onFilingStatusChange={setFilingStatus}
+            onStateChange={setStateCode}
+            onNext={() => goToQuick(1)}
+          />
+        ) : null}
+
+        {mode === "quick" && quickStep === 1 ? (
+          <StepQuickIncome
+            agiText={quickAgiText}
+            itemizedText={quickItemizedText}
+            onAgiChange={setQuickAgiText}
+            onItemizedChange={setQuickItemizedText}
+            onBack={() => goToQuick(0)}
+            onNext={() => goToQuick(2)}
+          />
+        ) : null}
+
+        {mode === "quick" && quickStep === 2 ? (
+          <StepQuickGift
+            agiText={quickAgiText}
+            donationText={quickDonationText}
+            charityType={quickCharityType}
+            propertyType={quickPropertyType}
+            onDonationChange={setQuickDonationText}
+            onCharityTypeChange={setQuickCharityType}
+            onPropertyTypeChange={setQuickPropertyType}
+            onBack={() => goToQuick(1)}
+            onNext={() => goToQuick(3)}
+          />
+        ) : null}
+
+        {mode === "quick" && quickStep === 3 ? (
+          <StepResults
+            comparison={quickComparison}
+            onBack={() => goToQuick(2)}
+            onRestart={restart}
+          />
         ) : null}
 
         {mode === "detailed" && step === 0 ? (
