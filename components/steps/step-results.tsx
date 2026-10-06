@@ -8,7 +8,6 @@ import { TaxChart } from "@/components/results/tax-chart";
 import { Button } from "@/components/ui/button";
 import { Note } from "@/components/wizard/note";
 import { formatCurrency, formatPercent } from "@/lib/format";
-import { federalTax } from "@/lib/taxData";
 import type { TaxComparison } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -60,12 +59,9 @@ export function StepResults({
           ) : null}
           {donationCarryforward > 0 ? (
             <Note>
-              Cash gifts are deductible up to{" "}
-              {formatPercent(
-                federalTax.charitable_deduction_limits.cash_public_charity_agi_limit,
-                0,
-              )}{" "}
-              of income ({formatCurrency(agiLimitAmount)}). The other{" "}
+              This kind of gift is deductible up to{" "}
+              {formatPercent(comparison.charitableLimitRate, 0)} of income (
+              {formatCurrency(agiLimitAmount)}). The other{" "}
               {formatCurrency(donationCarryforward)} carries forward up to five
               years.
             </Note>

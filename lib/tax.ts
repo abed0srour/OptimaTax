@@ -10,6 +10,8 @@ import type {
   BracketSlice,
   BracketTarget,
   CalculatorInput,
+  CharitableLimit,
+  CharityType,
   CreditBreakdown,
   DeductionMode,
   Dependents,
@@ -17,6 +19,8 @@ import type {
   IncomeSources,
   KhumsBreakdown,
   ProgressiveResult,
+  PropertyType,
+  QuickEstimateInput,
   ScenarioBreakdown,
   SelfEmploymentTax,
   SocialSecurityTaxability,
@@ -26,6 +30,87 @@ import type {
 
 /** Khums is one fifth of the net surplus remaining after the year's expenses. */
 export const KHUMS_RATE = 0.2;
+
+/**
+ * AGI ceilings under IRC 170(b) for gifts that are not cash to a public charity.
+ * Public cash (60%) lives in the data file; these are fixed by statute.
+ */
+const CHARITABLE_AGI_LIMITS = {
+  public: { appreciated_property: 0.3 },
+  private: { cash: 0.3, appreciated_property: 0.2 },
+} as const;
+
+/** Share of AGI that a gift to this kind of charity, of this kind of asset, may deduct. */
+export function charitableAgiRate(
+  charityType: CharityType = "public",
+  propertyType: PropertyType = "cash",
+): number {
+  if (charityType === "public") {
+    return propertyType === "cash"
+      ? federalTax.charitable_deduction_limits.cash_public_charity_agi_limit
+      : CHARITABLE_AGI_LIMITS.public.appreciated_property;
+  }
+  return CHARITABLE_AGI_LIMITS.private[propertyType];
+}
+
+/**
+ * Caps a gift at its AGI ceiling and reports what is left over.
+ *
+ *   public  — 60% cash, 30% long-term appreciated property
+ *   private — 30% cash, 20% long-term appreciated property
+ *
+ * Excess is not lost: it carries forward up to five years.
+ */
+export function calculateCharitableLimit(
+  donation: number,
+  agi: number,
+  charityType: CharityType = "public",
+  propertyType: PropertyType = "cash",
+): CharitableLimit {
+  const rate = charitableAgiRate(charityType, propertyType);
+  const ceiling = clampToZero(agi) * rate;
+  const given = clampToZero(donation);
+  const deductible = Math.min(given, ceiling);
+
+  return { rate, ceiling, deductible, carryforward: given - deductible };
+}
+
+/**
+ * Quick Estimate answers as engine input: the one AGI figure enters as ordinary
+ * income, so the engine's AGI equals it. "Itemized" is the real IRS rule — the
+ * gift only helps once itemizing beats the standard deduction — and is when the
+ * 0.5% floor applies.
+ */
+export function quickEstimateToCalculatorInput(
+  quick: QuickEstimateInput,
+  filingStatus: FilingStatus,
+  stateCode: string,
+): CalculatorInput {
+  return {
+    income: {
+      wages: 0,
+      selfEmployment: 0,
+      retirementDistributions: 0,
+      unemployment: 0,
+      otherOrdinaryIncome: quick.agi,
+      rentalRoyalty: 0,
+      otherInvestmentIncome: 0,
+      longTermCapitalGains: 0,
+      socialSecurityBenefits: 0,
+      taxExemptInterest: 0,
+    },
+    expenses: 0,
+    donation: quick.donationAmount,
+    filingStatus,
+    stateCode,
+    deductionMode: "itemized",
+    dependents: { qualifyingChildren: 0, otherDependents: 0 },
+    applyCharitableFloor: true,
+    charityType: quick.charityType,
+    propertyType: quick.propertyType,
+    otherItemizedDeductions: quick.itemizedExpenses,
+  };
+}
 
 /** Itemized charitable gifts only count above this share of AGI (tax years 2026+). */
 export const CHARITABLE_AGI_FLOOR = 0.005;
@@ -431,10 +516,11 @@ function totalDeduction(
   standardDeduction: number,
   donation: number,
   mode: DeductionMode,
+  otherItemized = 0,
 ): number {
   return mode === "stacked"
     ? standardDeduction + donation
-    : Math.max(standardDeduction, donation);
+    : Math.max(standardDeduction, clampToZero(otherItemized) + donation);
 }
 
 /**
@@ -494,7 +580,13 @@ export function calculateBracketTarget(
   const gains = clampToZero(income.longTermCapitalGains);
 
   const taxableIncome = clampToZero(
-    agi - totalDeduction(standardDeduction, givenDonation, deductionMode),
+    agi -
+      totalDeduction(
+        standardDeduction,
+        givenDonation,
+        deductionMode,
+        input.otherItemizedDeductions,
+      ),
   );
   const ordinaryTaxable = clampToZero(taxableIncome - Math.min(gains, taxableIncome));
 
@@ -513,7 +605,7 @@ export function calculateBracketTarget(
   const targetDonation =
     deductionMode === "stacked"
       ? deductionNeeded - standardDeduction
-      : deductionNeeded;
+      : deductionNeeded - clampToZero(input.otherItemizedDeductions ?? 0);
 
   const additionalDonationNeeded = clampToZero(targetDonation - givenDonation);
   if (additionalDonationNeeded <= 0) return null;
@@ -545,7 +637,13 @@ function buildScenario(
   const { agi, socialSecurity } = calculateAgiParts(income, expenses, filingStatus);
 
   const federalTaxableIncome = clampToZero(
-    agi - totalDeduction(federalStandardDeduction(filingStatus), donation, deductionMode),
+    agi -
+      totalDeduction(
+        federalStandardDeduction(filingStatus),
+        donation,
+        deductionMode,
+        input.otherItemizedDeductions,
+      ),
   );
 
   // Gains sit on top: deductions eat ordinary income first, and whatever gains
@@ -630,11 +728,16 @@ export function buildComparison(input: CalculatorInput): TaxComparison {
   const netProfit = calculateNetProfit(input.income, input.expenses);
   const donationEntered = clampToZero(input.donation);
 
-  // IRC 170(b)(1)(A): cash gifts to public charities are deductible only up to
-  // 60% of AGI. Anything above that carries forward for up to five years.
-  const agiLimitAmount =
-    netProfit * federalTax.charitable_deduction_limits.cash_public_charity_agi_limit;
-  const cappedDonation = Math.min(donationEntered, agiLimitAmount);
+  // IRC 170(b): the ceiling depends on who gets the gift and what it is (60% /
+  // 30% public, 30% / 20% private). Anything above carries forward five years.
+  const limit = calculateCharitableLimit(
+    donationEntered,
+    netProfit,
+    input.charityType,
+    input.propertyType,
+  );
+  const agiLimitAmount = limit.ceiling;
+  const cappedDonation = limit.deductible;
 
   // The floor comes off the gift that survives the ceiling, so a gift smaller
   // than 0.5% of AGI deducts nothing. Off unless the caller asks for it.
@@ -660,7 +763,8 @@ export function buildComparison(input: CalculatorInput): TaxComparison {
     netProfit,
     donationEntered,
     deductibleDonation,
-    donationCarryforward: donationEntered - cappedDonation,
+    donationCarryforward: limit.carryforward,
+    charitableLimitRate: limit.rate,
     charitableFloorAmount: floorAmount,
     agiLimitAmount,
     khums: calculateKhums(netProfit, donationEntered),

@@ -301,6 +301,8 @@ export interface TaxComparison {
   /** Part of the gift lost to the 0.5%-of-AGI floor; 0 when the floor is off. */
   charitableFloorAmount: number;
   agiLimitAmount: number;
+  /** The AGI share the ceiling used for this charity and asset combination. */
+  charitableLimitRate: number;
   khums: KhumsBreakdown;
   /** Null once already in the lowest federal bracket — there's nowhere lower to go. */
   bracketTarget: BracketTarget | null;
@@ -324,6 +326,35 @@ export interface TaxComparison {
  */
 export type DeductionMode = "stacked" | "itemized";
 
+/** Who receives the gift. Drives which AGI ceiling applies. */
+export type CharityType = "public" | "private";
+
+/** What is being given: cash, or long-term appreciated property. */
+export type PropertyType = "cash" | "appreciated_property";
+
+/** The answers behind Quick Estimate Mode. */
+export interface QuickEstimateInput {
+  /** Adjusted gross income — last year's figure or a provisional one. */
+  agi: number;
+  /** Itemized deductions other than the gift (mortgage interest, SALT…). */
+  itemizedExpenses: number;
+  donationAmount: number;
+  charityType: CharityType;
+  propertyType: PropertyType;
+}
+
+/** How a gift fares against its AGI ceiling. */
+export interface CharitableLimit {
+  /** Share of AGI this kind of gift may deduct in one year. */
+  rate: number;
+  /** rate × AGI, in dollars. */
+  ceiling: number;
+  /** The part of the gift that fits under the ceiling. */
+  deductible: number;
+  /** The part above the ceiling; carries forward up to five years. */
+  carryforward: number;
+}
+
 export interface CalculatorInput {
   income: IncomeSources;
   /** Business expenses, deducted from self-employment revenue only. */
@@ -339,4 +370,13 @@ export interface CalculatorInput {
    * does not model it, keeps its existing numbers.
    */
   applyCharitableFloor?: boolean;
+  /** Receiving organization; defaults to a public charity. */
+  charityType?: CharityType;
+  /** Gift type; defaults to cash. */
+  propertyType?: PropertyType;
+  /**
+   * Non-charitable itemized deductions. Counted only in `itemized` mode, where
+   * the gift is added to them before comparing against the standard deduction.
+   */
+  otherItemizedDeductions?: number;
 }

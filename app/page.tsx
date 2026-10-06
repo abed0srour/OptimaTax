@@ -12,13 +12,19 @@ import { StepTax } from "@/components/steps/step-tax";
 import { ModeToggle, type WizardMode } from "@/components/wizard/mode-toggle";
 import { Stepper, type StepMeta } from "@/components/wizard/stepper";
 import { parseMoney, toMoneyInput } from "@/lib/format";
-import { buildComparison, calculateNetProfit, KHUMS_RATE } from "@/lib/tax";
+import {
+  buildComparison,
+  calculateNetProfit,
+  KHUMS_RATE,
+  quickEstimateToCalculatorInput,
+} from "@/lib/tax";
 import { taxYear } from "@/lib/taxData";
 import type {
+  CharityType,
   DeductionMode,
   Dependents,
   FilingStatus,
-  IncomeSources,
+  PropertyType,
 } from "@/lib/types";
 
 const STEPS: StepMeta[] = [
@@ -42,19 +48,6 @@ const EMPTY_INCOME: IncomeText = {
   taxExemptInterest: "",
 };
 
-const EMPTY_INCOME_SOURCES: IncomeSources = {
-  wages: 0,
-  selfEmployment: 0,
-  retirementDistributions: 0,
-  unemployment: 0,
-  otherOrdinaryIncome: 0,
-  rentalRoyalty: 0,
-  otherInvestmentIncome: 0,
-  longTermCapitalGains: 0,
-  socialSecurityBenefits: 0,
-  taxExemptInterest: 0,
-};
-
 const DEFAULTS = {
   stateCode: "CA",
   filingStatus: "single" as FilingStatus,
@@ -75,7 +68,10 @@ export default function Home() {
   // status are shared with the detailed flow, since they mean the same thing.
   const [quickResults, setQuickResults] = useState(false);
   const [quickAgiText, setQuickAgiText] = useState("");
+  const [quickItemizedText, setQuickItemizedText] = useState("");
   const [quickDonationText, setQuickDonationText] = useState("");
+  const [quickCharityType, setQuickCharityType] = useState<CharityType>("public");
+  const [quickPropertyType, setQuickPropertyType] = useState<PropertyType>("cash");
 
   const [stateCode, setStateCode] = useState(DEFAULTS.stateCode);
   const [filingStatus, setFilingStatus] = useState<FilingStatus>(DEFAULTS.filingStatus);
@@ -140,21 +136,30 @@ export default function Home() {
     ],
   );
 
-  // One AGI figure goes in as ordinary income, so the engine's AGI equals it.
-  // "Itemized" is the real IRS rule, which is when the 0.5% floor applies.
   const quickComparison = useMemo(
     () =>
-      buildComparison({
-        income: { ...EMPTY_INCOME_SOURCES, otherOrdinaryIncome: parseMoney(quickAgiText) },
-        expenses: 0,
-        donation: parseMoney(quickDonationText),
-        filingStatus,
-        stateCode,
-        deductionMode: "itemized",
-        dependents: DEFAULTS.dependents,
-        applyCharitableFloor: true,
-      }),
-    [quickAgiText, quickDonationText, filingStatus, stateCode],
+      buildComparison(
+        quickEstimateToCalculatorInput(
+          {
+            agi: parseMoney(quickAgiText),
+            itemizedExpenses: parseMoney(quickItemizedText),
+            donationAmount: parseMoney(quickDonationText),
+            charityType: quickCharityType,
+            propertyType: quickPropertyType,
+          },
+          filingStatus,
+          stateCode,
+        ),
+      ),
+    [
+      quickAgiText,
+      quickItemizedText,
+      quickDonationText,
+      quickCharityType,
+      quickPropertyType,
+      filingStatus,
+      stateCode,
+    ],
   );
 
   function showQuickResults(show: boolean) {
@@ -183,7 +188,10 @@ export default function Home() {
     setMatchKhums(DEFAULTS.matchKhums);
     setDependents(DEFAULTS.dependents);
     setQuickAgiText("");
+    setQuickItemizedText("");
     setQuickDonationText("");
+    setQuickCharityType("public");
+    setQuickPropertyType("cash");
     setQuickResults(false);
     setFurthest(0);
     setStep(0);
@@ -211,13 +219,19 @@ export default function Home() {
           ) : (
             <StepQuick
               agiText={quickAgiText}
+              itemizedText={quickItemizedText}
+              donationText={quickDonationText}
+              charityType={quickCharityType}
+              propertyType={quickPropertyType}
               filingStatus={filingStatus}
               stateCode={stateCode}
-              donationText={quickDonationText}
               onAgiChange={setQuickAgiText}
+              onItemizedChange={setQuickItemizedText}
+              onDonationChange={setQuickDonationText}
+              onCharityTypeChange={setQuickCharityType}
+              onPropertyTypeChange={setQuickPropertyType}
               onFilingStatusChange={setFilingStatus}
               onStateChange={setStateCode}
-              onDonationChange={setQuickDonationText}
               onNext={() => showQuickResults(true)}
             />
           )
