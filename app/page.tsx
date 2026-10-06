@@ -308,7 +308,31 @@ export default function Home() {
           />
         ) : null}
       </main>
+
+      <Credits />
     </div>
+  );
+}
+
+/** Who built this. Stacks on a phone, one line from `sm` up. */
+function Credits() {
+  return (
+    <footer className="border-t border-border/70 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+      <div className="mx-auto flex w-full max-w-xl flex-col items-center gap-1 px-4 py-5 text-center text-sm text-muted-foreground sm:flex-row sm:justify-between sm:px-6 sm:text-left">
+        <p>
+          Built by{" "}
+          <span className="font-medium text-foreground">Abedallatif Srour</span>
+          <span aria-hidden> · </span>
+          Software Engineer
+        </p>
+        <a
+          href="tel:+96176675348"
+          className="tnum rounded-sm underline-offset-4 outline-none hover:text-foreground hover:underline focus-visible:ring-3 focus-visible:ring-ring/50"
+        >
+          +961 76 675 348
+        </a>
+      </div>
+    </footer>
   );
 }
 
