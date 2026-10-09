@@ -13,6 +13,14 @@ const centsDollars = new Intl.NumberFormat("en-US", {
 
 const grouped = new Intl.NumberFormat("en-US");
 
+// UTC so a YYYY-MM-DD date never slips a day west of Greenwich.
+const shortDate = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+  timeZone: "UTC",
+});
+
 export function formatCurrency(value: number, showCents = false): string {
   if (!Number.isFinite(value)) return "$0";
   return showCents ? centsDollars.format(value) : wholeDollars.format(value);
@@ -76,4 +84,9 @@ export function formatBracketRange(min: number, max: number | null): string {
   return max === null
     ? `${formatCurrency(min)} and up`
     : `${formatCurrency(min)} – ${formatCurrency(max)}`;
+}
+
+/** `"2026-08-02"` → `"Aug 2, 2026"`. */
+export function formatIsoDate(iso: string): string {
+  return shortDate.format(new Date(`${iso}T00:00:00Z`));
 }

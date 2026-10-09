@@ -31,6 +31,8 @@ export interface Bracket {
 
 export interface FederalTaxData {
   tax_year: number;
+  /** ISO date (YYYY-MM-DD) the figures last changed; stamped by scripts/update-tax-data.mjs. */
+  last_updated: string;
   source: string;
   notes: string;
   ordinary_income_tax: {

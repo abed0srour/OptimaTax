@@ -19,6 +19,9 @@
  *   long_term_capital_gains_and_qualified_dividends.filing_statuses.<status>.brackets
  *   self_employment_tax.social_security_wage_base            (optional)
  *
+ * `last_updated` is stamped with today's UTC date whenever the figures change,
+ * and left alone when the source matches what is already committed.
+ *
  * Statutory figures (NIIT, Additional Medicare, Social Security benefit tiers,
  * rates, the CTC) are deliberately NOT updated here: they are not indexed
  * annually, and changing them is a legislative edit that deserves a human.
@@ -212,6 +215,7 @@ async function main() {
     console.log(`federal_tax.json already current (tax year ${current.tax_year}).`);
     return;
   }
+  next.last_updated = new Date().toISOString().slice(0, 10);
 
   if (DRY) {
     console.log(`[dry-run] would update ${current.tax_year} -> ${next.tax_year}.`);

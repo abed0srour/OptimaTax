@@ -2,14 +2,14 @@
 
 import { cn } from "@/lib/utils";
 
-export type WizardMode = "detailed" | "quick";
+export type WizardMode = "quick" | "detailed";
 
 const MODES: { value: WizardMode; label: string; detail: string }[] = [
+  { value: "quick", label: "Quick estimate", detail: "4 steps, from AGI" },
   { value: "detailed", label: "Detailed", detail: "5 steps, itemized" },
-  { value: "quick", label: "Quick estimate", detail: "1 step, one number" },
 ];
 
-/** Segmented switch between the full wizard and the one-screen estimate. */
+/** Segmented switch between the quick estimate and the full wizard. */
 export function ModeToggle({
   value,
   onChange,

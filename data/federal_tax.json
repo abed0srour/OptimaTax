@@ -1,5 +1,6 @@
 {
   "tax_year": 2026,
+  "last_updated": "2026-08-02",
   "source": "IRS Revenue Procedure 2025-32 (published Oct 9, 2025); verified against IRS.gov newsroom release. Social Security wage base per SSA's Oct 2025 announcement.",
   "notes": "All bracket thresholds are TAXABLE income (after standard/itemized deductions), not gross income. Rates apply to income earned Jan 1 - Dec 31, 2026, reported on returns filed in early 2027. Bracket `min` values follow the IRS table convention (one dollar above the previous `max`); the loader in lib/taxData.ts snaps them down to the previous `max` so no dollar falls through a boundary.",
 

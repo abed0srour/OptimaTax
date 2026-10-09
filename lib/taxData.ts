@@ -13,6 +13,7 @@ export const federalTax = federalJson as unknown as FederalTaxData;
 const stateTaxRaw = stateJson as unknown as StateTaxData;
 
 export const taxYear = federalTax.tax_year;
+export const ratesLastUpdated = federalTax.last_updated;
 export const stateTaxYear = stateTaxRaw.jurisdiction_year;
 
 export const FILING_STATUS_IDS: FilingStatus[] = [
