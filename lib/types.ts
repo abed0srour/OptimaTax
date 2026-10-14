@@ -114,10 +114,26 @@ export interface RawStateEntry {
   standard_deduction: number;
   /** Single filer's own exemption where it is a deduction from income. 0 if none or a credit. */
   personal_exemption: number;
+  /** How the standard deduction shrinks with AGI. Absent where it doesn't. */
+  standard_deduction_phaseout?: PhaseoutPoint[];
+  /** How the personal exemption shrinks with AGI. Absent where it doesn't. */
+  personal_exemption_phaseout?: PhaseoutPoint[];
   /** False where a single filer has no route to deduct a gift to a 501(c)(3). */
   charitable_deduction: boolean;
-  /** Why the state treats gifts or deductions the way it does, when that needs saying. */
+  /** Why a gift does not lower this state's tax. Shown on the results screen. */
   note?: string;
+  /** The primary document these figures were taken from. */
+  source?: string;
+}
+
+/**
+ * One point on an income phase-out: the amount allowed at this AGI. The
+ * engine interpolates between points and holds the end values beyond them, so
+ * a straight-line phase-out is two points and a cliff is two points a dollar apart.
+ */
+export interface PhaseoutPoint {
+  agi: number;
+  amount: number;
 }
 
 export interface StateTaxData {
@@ -138,10 +154,12 @@ export interface StateTaxEntry {
   rate?: number;
   /** Normalized half-open brackets. Empty for `none` and `flat` states. */
   brackets: Bracket[];
-  /** Single filer's standard deduction, in dollars. 0 where the state has none. */
+  /** Single filer's base standard deduction, in dollars. 0 where the state has none. */
   standardDeduction: number;
-  /** Single filer's personal exemption, in dollars, where it is a deduction. */
+  standardDeductionPhaseout: PhaseoutPoint[];
+  /** Single filer's base personal exemption, in dollars, where it is a deduction. */
   personalExemption: number;
+  personalExemptionPhaseout: PhaseoutPoint[];
   /** False where the state grants no deduction for charitable contributions. */
   allowsCharitableDeduction: boolean;
   /** Caveat surfaced in the UI for this specific state, if any. */
@@ -262,6 +280,10 @@ export interface ScenarioBreakdown {
   /** Everything subtracted from AGI to reach federal taxable income. */
   federalDeduction: number;
   federalTaxableIncome: number;
+  /** The state standard deduction allowed at this AGI, after any phase-out. */
+  stateStandardDeduction: number;
+  /** The state personal exemption allowed at this AGI, after any phase-out. */
+  statePersonalExemption: number;
   /** State standard deduction or itemized total, plus the personal exemption. */
   stateDeduction: number;
   stateTaxableIncome: number;

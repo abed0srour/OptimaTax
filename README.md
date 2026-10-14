@@ -158,15 +158,17 @@ Each `state_tax_<year>.json` is an object keyed by postal code, holding **single
     { "rate": 0.05, "min": 5001, "max": 17000 },
     { "rate": 0.0575, "min": 17001, "max": null }
   ],
-  "standard_deduction": 8500,
+  "standard_deduction": 8750,
   "personal_exemption": 930,
-  "charitable_deduction": true
+  "charitable_deduction": true,
+  "source": "https://www.tax.virginia.gov/sites/default/files/vatax-pdf/2025-760-instructions.pdf"
 }
 ```
 
 A `max` of `null` marks the open-ended top bracket. `none` states carry `rate: 0` and no brackets; `flat` states carry a `rate` and no brackets. A 0% band at the bottom of a state's own rate schedule (Idaho, Mississippi, Ohio…) is a bracket with `rate: 0`.
 
-- `standard_deduction` is the single filer's base amount, before any income phase-out. States that build on the federal deduction carry the dollar figure they actually allow that year.
+- `standard_deduction` is the single filer's base amount. States that build on the federal deduction carry the dollar figure they actually allow that year.
+- `standard_deduction_phaseout` / `personal_exemption_phaseout`, where present, list `{ agi, amount }` points: the engine interpolates between them and holds the end values beyond, so a straight-line phase-out is two points and a cliff is two points a dollar apart (`phasedAmount` in `lib/tax.ts`).
 - `personal_exemption` counts only where the exemption is a deduction from income. Where it is a credit (California, Oregon, Nebraska…) it is `0` here.
 - `charitable_deduction` is `false` where a single filer has no route to deduct a gift — no itemized deductions and no charitable subtraction. It is per year because states repeal and restore it.
 
@@ -202,16 +204,18 @@ Requires Node 18.18+.
 
 ### Worked example
 
-California · single · income $120,000 · expenses $20,000 · donation $20,000 · stacked mode:
+California · single · W-2 wages $100,000 · donation $20,000 · stacked mode · 2026 rates:
 
 | | Scenario A | Scenario B |
 | --- | --- | --- |
-| Federal taxable income | $83,900 | $63,900 |
-| Federal tax | $13,170 | $8,770 |
-| California tax | $5,842 | $3,982 |
-| **Total tax** | **$19,012** | **$12,752** |
+| Federal taxable income ($16,100 standard deduction) | $83,900 | $63,900 |
+| Federal income tax | $13,170 | $8,770 |
+| California taxable income ($5,900 standard deduction) | $94,100 | $74,100 |
+| California tax | $5,069 | $3,223 |
+| FICA | $7,650 | $7,650 |
+| **Total tax** | **$25,889** | **$19,643** |
 
-Tax saved: **$6,260**. Real cost of the $20,000 gift: **$13,740** — an effective 31.3% discount.
+Tax saved: **$6,246**. Real cost of the $20,000 gift: **$13,754** — an effective 31.2% discount. On 2025 rates the same inputs save $6,260.
 
 ---
 
@@ -227,7 +231,7 @@ This is an educational estimator, not tax or religious advice.
 - **Married-filing-separately Social Security is modeled at the harsher base of $0**, per IRC 86(c)(1)(C), which applies to a spouse who lived with their partner at any point in the year. A separated filer who lived apart all year gets the single thresholds and will see benefits overstated as taxable here.
 - **No senior deduction or age input.** OBBBA's $6,000 deduction for filers 65+ is not modeled.
 - **State brackets are single-filer schedules, applied to every filing status.** The dataset carries no married-filing-jointly thresholds, which are wider in many states — joint filers will see state tax overstated.
-- **State deductions are simplified.** Each state's single-filer standard deduction and personal exemption are applied at their base amounts: income phase-outs (Wisconsin's sliding deduction, Minnesota's, Rhode Island's) are not, nor are exemption *credits*, the federal-tax deduction a few states allow, or benefit recapture (Connecticut, New York). In `itemized` mode the other itemized deductions entered are assumed to carry to the state return.
+- **State deductions are simplified.** Each state's single-filer standard deduction and personal exemption are applied, with their income phase-outs measured against federal AGI. Not modeled: exemption *credits*, state charitable *credits* (Vermont, Wisconsin, Utah, Arizona), the deduction for federal income tax paid (Alabama, Missouri, Oregon), and benefit recapture (Connecticut, New York, Arkansas). In `itemized` mode the other itemized deductions entered are assumed to carry to the state return. The gift reaches the state return after the federal AGI ceiling and the 2026 floor, even in states that do not follow them.
 - **State income tax only.** City and county income taxes are excluded — NYC and Yonkers, Maryland counties, Ohio municipalities, Indiana counties, Pennsylvania local EIT.
 - **Tax years 2025 and 2026**: federal 2025 per IRS Rev. Proc. 2024-40 with OBBBA's higher standard deductions, federal 2026 per Rev. Proc. 2025-32. State figures per each state's own published schedules for that year; each file's `source` and `notes` say where they come from.
 - **OBBBA's 2026 charitable provisions are only partly modeled.** The new 0.5%-of-AGI floor on itemized gifts applies in Quick Estimate from 2026 (not in 2025, and not in the detailed flow). The 35% cap on itemized deduction value for top-bracket filers is not modeled, and both would reduce the savings shown. Nor is the new deduction for non-itemizers (up to $1,000 single, $2,000 joint, from 2026), which would *raise* the savings on a gift too small to itemize.

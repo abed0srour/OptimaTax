@@ -19,6 +19,7 @@ import type {
   FilingStatus,
   IncomeSources,
   KhumsBreakdown,
+  PhaseoutPoint,
   ProgressiveResult,
   PropertyType,
   QuickEstimateInput,
@@ -265,6 +266,25 @@ export function calculateStateTax(
     default:
       return EMPTY_RESULT;
   }
+}
+
+/**
+ * What a phased-out amount comes to at this AGI: the base below the first
+ * point, interpolated between points, and the last point's amount (zero, or a
+ * floor) beyond. No points means the amount never phases out.
+ */
+export function phasedAmount(base: number, points: PhaseoutPoint[], agi: number): number {
+  if (points.length === 0 || agi <= points[0].agi) return base;
+
+  for (let i = 1; i < points.length; i++) {
+    const from = points[i - 1];
+    const to = points[i];
+    if (agi <= to.agi) {
+      const share = (agi - from.agi) / (to.agi - from.agi);
+      return from.amount + (to.amount - from.amount) * share;
+    }
+  }
+  return points[points.length - 1].amount;
 }
 
 // ------------------------------------------------------------ payroll taxes
@@ -706,15 +726,26 @@ function buildScenario(
   // the federal return does. Where a state allows no charitable deduction it
   // has no itemized route either, so neither the gift nor the other itemized
   // deductions come off — the standard deduction alone does. The exemption is
-  // a flat subtraction on top, taken however the filer deducts.
+  // a flat subtraction on top, taken however the filer deducts. Both shrink
+  // with AGI in some states, and AGI does not move with the gift.
+  const stateStandardDeduction = phasedAmount(
+    state.standardDeduction,
+    state.standardDeductionPhaseout,
+    agi,
+  );
+  const statePersonalExemption = phasedAmount(
+    state.personalExemption,
+    state.personalExemptionPhaseout,
+    agi,
+  );
   const stateItemizes = state.allowsCharitableDeduction;
   const stateDeduction =
     totalDeduction(
-      state.standardDeduction,
+      stateStandardDeduction,
       stateItemizes ? donation : 0,
       deductionMode,
       stateItemizes ? input.otherItemizedDeductions : 0,
-    ) + state.personalExemption;
+    ) + statePersonalExemption;
   const stateTaxableIncome = clampToZero(agi - stateDeduction);
   const stateResult = calculateStateTax(stateTaxableIncome, state);
 
@@ -727,6 +758,8 @@ function buildScenario(
     agi,
     federalDeduction,
     federalTaxableIncome,
+    stateStandardDeduction,
+    statePersonalExemption,
     stateDeduction,
     stateTaxableIncome,
     ordinaryTaxableIncome,

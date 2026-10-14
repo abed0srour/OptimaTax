@@ -85,7 +85,9 @@ function resolveStates(data: StateTaxData): StateTaxEntry[] {
       rate: entry.tax_type === "flat" ? entry.rate : undefined,
       brackets: entry.tax_type === "graduated" ? normalizeBrackets(entry.brackets) : [],
       standardDeduction: entry.standard_deduction,
+      standardDeductionPhaseout: entry.standard_deduction_phaseout ?? [],
       personalExemption: entry.personal_exemption,
+      personalExemptionPhaseout: entry.personal_exemption_phaseout ?? [],
       allowsCharitableDeduction: entry.charitable_deduction,
       note: entry.note,
     }))

@@ -69,8 +69,8 @@ export function StepResults({
           ) : null}
           {stateNoDeduction ? (
             <Note>
-              {stateEntry.name} allows no charitable deduction, so the gift
-              lowers your federal tax only.
+              {stateEntry.note ??
+                `${stateEntry.name} allows no charitable deduction, so the gift lowers your federal tax only.`}
             </Note>
           ) : null}
           {stateYearDiffers ? (
@@ -168,11 +168,11 @@ function stateBasis(scenario: ScenarioBreakdown, state: StateTaxEntry): BasisLin
   return [
     { label: "Adjusted gross income", value: scenario.agi },
     ...deductionLines(
-      scenario.stateDeduction - state.personalExemption,
-      state.standardDeduction,
+      scenario.stateDeduction - scenario.statePersonalExemption,
+      scenario.stateStandardDeduction,
       gift,
     ),
-    { label: "Personal exemption", value: state.personalExemption, deduction: true },
+    { label: "Personal exemption", value: scenario.statePersonalExemption, deduction: true },
     { label: "Taxable income", value: scenario.stateTaxableIncome, total: true },
   ].filter((line) => line.total || line.value > 0);
 }
