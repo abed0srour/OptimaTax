@@ -1,14 +1,14 @@
 "use client";
 
 import { ArrowLeft, RotateCcw } from "lucide-react";
-import { BracketTable } from "@/components/results/bracket-table";
+import { BracketTable, type BasisLine } from "@/components/results/bracket-table";
 import { FederalBreakdown } from "@/components/results/federal-breakdown";
 import { KhumsCoverage } from "@/components/results/khums-coverage";
 import { TaxChart } from "@/components/results/tax-chart";
 import { Button } from "@/components/ui/button";
 import { Note } from "@/components/wizard/note";
 import { formatCurrency, formatPercent } from "@/lib/format";
-import type { TaxComparison } from "@/lib/types";
+import type { ScenarioBreakdown, StateTaxEntry, TaxComparison } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 export function StepResults({
@@ -21,6 +21,8 @@ export function StepResults({
   onRestart: () => void;
 }) {
   const {
+    taxYear,
+    stateTaxYear,
     khums,
     scenarioA,
     scenarioB,
@@ -38,12 +40,17 @@ export function StepResults({
     donationEntered > 0 &&
     !stateAllowsCharitableDeduction &&
     stateEntry.tax_type !== "none";
+  // States without an income tax owe nothing in any year, so only flag the rest.
+  const stateYearDiffers = stateTaxYear !== taxYear && stateEntry.tax_type !== "none";
 
   return (
     <div className="animate-step-in space-y-3">
       <Verdict comparison={comparison} />
 
-      {donationCarryforward > 0 || stateNoDeduction || charitableFloorAmount > 0 ? (
+      {donationCarryforward > 0 ||
+      stateNoDeduction ||
+      charitableFloorAmount > 0 ||
+      stateYearDiffers ? (
         <div className="space-y-2 px-1 py-2">
           {charitableFloorAmount > 0 ? (
             <Note>
@@ -66,6 +73,12 @@ export function StepResults({
               lowers your federal tax only.
             </Note>
           ) : null}
+          {stateYearDiffers ? (
+            <Note>
+              {stateEntry.name} tax uses {stateTaxYear} state rates — {taxYear}{" "}
+              state schedules aren&apos;t included yet.
+            </Note>
+          ) : null}
         </div>
       ) : null}
 
@@ -78,9 +91,17 @@ export function StepResults({
       <div className="space-y-2 pt-2">
         <h2 className="px-1 text-sm font-medium text-muted-foreground">Details</h2>
         <FederalBreakdown scenario={scenario} />
-        <BracketTable title="Federal brackets" result={scenario.federal} />
+        <BracketTable
+          title={`${taxYear} federal brackets`}
+          result={scenario.federal}
+          basis={federalBasis(scenario, comparison.federalStandardDeduction)}
+        />
         {stateEntry.tax_type !== "none" ? (
-          <BracketTable title={`${stateEntry.name} brackets`} result={scenario.state} />
+          <BracketTable
+            title={`${stateTaxYear} ${stateEntry.name} brackets`}
+            result={scenario.state}
+            basis={stateBasis(scenario, stateEntry)}
+          />
         ) : null}
       </div>
 
@@ -107,9 +128,59 @@ export function StepResults({
   );
 }
 
+/**
+ * Names what came off AGI. The engine takes the standard deduction, the
+ * standard deduction plus the gift, or an itemized total, and only the amount
+ * says which — so read it back from that.
+ */
+function deductionLines(total: number, standard: number, gift: number): BasisLine[] {
+  if (total === standard) {
+    return [{ label: "Standard deduction", value: standard, deduction: true }];
+  }
+  if (gift > 0 && total === standard + gift) {
+    return [
+      { label: "Standard deduction", value: standard, deduction: true },
+      { label: "Charitable gift", value: gift, deduction: true },
+    ];
+  }
+  return [{ label: "Itemized deductions", value: total, deduction: true }];
+}
+
+function federalBasis(scenario: ScenarioBreakdown, standard: number): BasisLine[] {
+  const lines: BasisLine[] = [
+    { label: "Adjusted gross income", value: scenario.agi },
+    ...deductionLines(scenario.federalDeduction, standard, scenario.donationApplied),
+  ];
+  // These brackets only see ordinary income; long-term gains take their own table.
+  if (scenario.gainsTaxableIncome > 0) {
+    lines.push(
+      { label: "Long-term gains, taxed separately", value: scenario.gainsTaxableIncome, deduction: true },
+      { label: "Taxed at ordinary rates", value: scenario.ordinaryTaxableIncome, total: true },
+    );
+  } else {
+    lines.push({ label: "Taxable income", value: scenario.federalTaxableIncome, total: true });
+  }
+  return lines.filter((line) => line.total || line.value > 0);
+}
+
+function stateBasis(scenario: ScenarioBreakdown, state: StateTaxEntry): BasisLine[] {
+  const gift = state.allowsCharitableDeduction ? scenario.donationApplied : 0;
+  return [
+    { label: "Adjusted gross income", value: scenario.agi },
+    ...deductionLines(
+      scenario.stateDeduction - state.personalExemption,
+      state.standardDeduction,
+      gift,
+    ),
+    { label: "Personal exemption", value: state.personalExemption, deduction: true },
+    { label: "Taxable income", value: scenario.stateTaxableIncome, total: true },
+  ].filter((line) => line.total || line.value > 0);
+}
+
 /** Names the winner outright, so nobody has to compare two bars to find it. */
 function Verdict({ comparison }: { comparison: TaxComparison }) {
-  const { taxSavings, donationEntered, netCostOfGiving, scenarioA } = comparison;
+  const { taxYear, taxSavings, donationEntered, netCostOfGiving, scenarioA } =
+    comparison;
   const better = taxSavings > 0;
 
   return (
@@ -120,9 +191,14 @@ function Verdict({ comparison }: { comparison: TaxComparison }) {
         better ? "border-keep/25 bg-keep-soft" : "border-border bg-card",
       )}
     >
-      <h1 id="step-title" className="text-sm font-medium text-muted-foreground">
-        {better ? "Giving saves you" : donationEntered > 0 ? "No tax saved" : "Your total tax"}
-      </h1>
+      <div className="flex items-center justify-between gap-3">
+        <h1 id="step-title" className="text-sm font-medium text-muted-foreground">
+          {better ? "Giving saves you" : donationEntered > 0 ? "No tax saved" : "Your total tax"}
+        </h1>
+        <span className="tnum shrink-0 rounded-full border border-border bg-card px-2.5 py-1 text-xs font-medium whitespace-nowrap text-muted-foreground">
+          {taxYear} tax year
+        </span>
+      </div>
 
       <p
         className={cn(

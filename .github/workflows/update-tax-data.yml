@@ -43,18 +43,21 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           BRANCH: chore/update-tax-data
         run: |
-          if git diff --quiet -- data/federal_tax.json; then
-            echo "federal_tax.json unchanged; no PR needed."
+          # --porcelain also lists a newly added year's file, which git diff would miss.
+          if [ -z "$(git status --porcelain -- 'data/federal_tax_*.json')" ]; then
+            echo "Federal tax data unchanged; no PR needed."
             exit 0
           fi
 
-          YEAR=$(node -p "require('./data/federal_tax.json').tax_year")
-          SOURCE=$(node -p "require('./data/federal_tax.json').source")
+          # The script only ever writes the newest year, so that is the file that changed.
+          FILE=$(ls data/federal_tax_*.json | sort | tail -n 1)
+          YEAR=$(node -p "require('./$FILE').tax_year")
+          SOURCE=$(node -p "require('./$FILE').source")
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -B "$BRANCH"
-          git add data/federal_tax.json
+          git add "$FILE"
           git commit -m "chore: update federal tax data for $YEAR"
           # Reuse one branch: a later run refreshes the open PR instead of adding another.
           git push --force origin "$BRANCH"
@@ -68,8 +71,10 @@ jobs:
             --base "${{ github.event.repository.default_branch }}" \
             --head "$BRANCH" \
             --title "Update federal tax data for $YEAR" \
-            --body "Automated update of the inflation-indexed figures in \`data/federal_tax.json\`.
+            --body "Automated update of the inflation-indexed figures in \`$FILE\`.
 
           **Source:** $SOURCE
 
-          Validated by \`scripts/update-tax-data.mjs\` and \`tsc --noEmit\`. **Check the brackets and standard deductions against the Revenue Procedure before merging**, and update the year in the file's \`notes\` field by hand."
+          Validated by \`scripts/update-tax-data.mjs\` and \`tsc --noEmit\`. **Check the brackets and standard deductions against the Revenue Procedure before merging**, and update the year in the file's \`notes\` field by hand.
+
+          If this adds a new year's file, the app does not offer it until $YEAR is added to \`TaxYear\` in \`lib/types.ts\`, to \`FEDERAL_TAX\` and \`STATE_TAX\` in \`lib/taxData.ts\`, and to \`lib/federalTaxData.check.ts\` — which is also what brings it under \`tsc --noEmit\`."

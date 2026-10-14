@@ -183,7 +183,8 @@
   },
 
   "charitable_deduction_limits": {
-    "notes": "IRC 170(b)(1)(A) — cash gifts to 501(c)(3) public charities are deductible up to this share of AGI, a ceiling OBBBA made permanent. Excess carries forward up to five years. NOT modeled: the new 0.5%-of-AGI floor on itemized charitable deductions and the 35% cap on the value of itemized deductions for top-bracket filers, both effective for tax years beginning after Dec 31, 2025.",
-    "cash_public_charity_agi_limit": 0.6
+    "notes": "IRC 170(b)(1)(A) — cash gifts to 501(c)(3) public charities are deductible up to this share of AGI, a ceiling OBBBA made permanent. Excess carries forward up to five years. `agi_floor` is OBBBA's new floor on itemized charitable deductions (IRC 170(b)(1)(I)), effective for tax years beginning after Dec 31, 2025: only the part of the gift above this share of AGI is deductible. NOT modeled: the 35% cap on the value of itemized deductions for top-bracket filers, effective the same year.",
+    "cash_public_charity_agi_limit": 0.6,
+    "agi_floor": 0.005
   }
 }

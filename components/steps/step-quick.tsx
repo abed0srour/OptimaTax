@@ -14,6 +14,7 @@ import type {
   CharityType,
   FilingStatus,
   PropertyType,
+  TaxYear,
 } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -128,6 +129,7 @@ export function StepQuickIncome({
 }
 
 export function StepQuickGift({
+  taxYear,
   agiText,
   donationText,
   charityType,
@@ -138,6 +140,7 @@ export function StepQuickGift({
   onBack,
   onNext,
 }: {
+  taxYear: TaxYear;
   agiText: string;
   donationText: string;
   charityType: CharityType;
@@ -150,7 +153,13 @@ export function StepQuickGift({
 }) {
   const agi = parseMoney(agiText);
   const donation = parseMoney(donationText);
-  const limit = calculateCharitableLimit(donation, agi, charityType, propertyType);
+  const limit = calculateCharitableLimit(
+    donation,
+    agi,
+    taxYear,
+    charityType,
+    propertyType,
+  );
 
   return (
     <StepCard

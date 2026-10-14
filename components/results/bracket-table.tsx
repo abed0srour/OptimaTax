@@ -10,18 +10,32 @@ import {
 } from "@/components/ui/table";
 import { formatBracketRange, formatCurrency, formatRate } from "@/lib/format";
 import type { ProgressiveResult } from "@/lib/types";
+import { cn } from "@/lib/utils";
+
+/** One line of the walk from AGI down to the income the brackets apply to. */
+export interface BasisLine {
+  label: string;
+  value: number;
+  /** A subtraction, shown with a minus sign. */
+  deduction?: boolean;
+  /** The result line, set off by a rule. */
+  total?: boolean;
+}
 
 /**
  * The chunk-by-chunk audit trail: which bracket each slice of income landed in
- * and what it cost.
+ * and what it cost. `basis` shows first how the taxed amount was reached, so
+ * the deductions in force are on the page rather than implied.
  */
 export function BracketTable({
   title,
   result,
+  basis,
   emptyMessage = "No tax due at this income level.",
 }: {
   title: string;
   result: ProgressiveResult;
+  basis?: BasisLine[];
   emptyMessage?: string;
 }) {
   return (
@@ -29,6 +43,32 @@ export function BracketTable({
       title={title}
       aside={<span className="tnum">{formatCurrency(result.tax)}</span>}
     >
+      {basis?.length ? (
+        <dl className="mb-4 space-y-1.5">
+          {basis.map((line) => (
+            <div
+              key={line.label}
+              className={cn(
+                "flex items-baseline justify-between gap-3",
+                line.total && "border-t border-border pt-1.5",
+              )}
+            >
+              <dt className="min-w-0 text-[0.8rem] text-foreground/80">{line.label}</dt>
+              <dd
+                className={cn(
+                  "tnum shrink-0 text-[0.8rem] whitespace-nowrap",
+                  line.total && "font-semibold",
+                )}
+              >
+                {line.deduction
+                  ? `−${formatCurrency(line.value)}`
+                  : formatCurrency(line.value)}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
+
       {result.slices.length === 0 ? (
         <p className="text-sm text-muted-foreground">{emptyMessage}</p>
       ) : (

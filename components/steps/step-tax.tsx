@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Readout } from "@/components/wizard/readout";
 import { StepCard, StepNav } from "@/components/wizard/step-card";
 import { formatCurrency } from "@/lib/format";
-import type { ScenarioBreakdown, StateTaxEntry } from "@/lib/types";
+import type { ScenarioBreakdown, StateTaxEntry, TaxYear } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 /**
@@ -13,12 +13,14 @@ import { cn } from "@/lib/utils";
  * equal outcomes, never as the required next step.
  */
 export function StepTax({
+  taxYear,
   scenario,
   stateEntry,
   onBack,
   onDonate,
   onSkip,
 }: {
+  taxYear: TaxYear;
   scenario: ScenarioBreakdown;
   stateEntry: StateTaxEntry;
   onBack: () => void;
@@ -31,7 +33,7 @@ export function StepTax({
       footer={<StepNav onBack={onBack} sticky={false} />}
     >
       <Readout
-        label="Total tax this year"
+        label={`Total tax for ${taxYear}`}
         value={formatCurrency(scenario.totalTax)}
         tone="tax"
       />

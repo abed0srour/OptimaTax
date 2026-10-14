@@ -1,0 +1,190 @@
+{
+  "tax_year": 2025,
+  "last_updated": "2026-10-14",
+  "source": "IRS Revenue Procedure 2024-40 (published Oct 22, 2024), with standard deductions as raised by the One Big Beautiful Bill Act (P.L. 119-21, signed July 4, 2025). Social Security wage base per SSA's Oct 2024 announcement.",
+  "notes": "All bracket thresholds are TAXABLE income (after standard/itemized deductions), not gross income. Rates apply to income earned Jan 1 - Dec 31, 2025, reported on returns filed in early 2026. Bracket `min` values follow the IRS table convention (one dollar above the previous `max`); the loader in lib/taxData.ts snaps them down to the previous `max` so no dollar falls through a boundary. A past year's figures are final: scripts/update-tax-data.mjs only ever writes the newest year.",
+
+  "ordinary_income_tax": {
+    "filing_statuses": {
+      "single": {
+        "name": "Single",
+        "standard_deduction": 15750,
+        "brackets": [
+          { "rate": 0.10, "min": 0, "max": 11925 },
+          { "rate": 0.12, "min": 11926, "max": 48475 },
+          { "rate": 0.22, "min": 48476, "max": 103350 },
+          { "rate": 0.24, "min": 103351, "max": 197300 },
+          { "rate": 0.32, "min": 197301, "max": 250525 },
+          { "rate": 0.35, "min": 250526, "max": 626350 },
+          { "rate": 0.37, "min": 626351, "max": null }
+        ]
+      },
+      "married_joint": {
+        "name": "Married Filing Jointly",
+        "standard_deduction": 31500,
+        "brackets": [
+          { "rate": 0.10, "min": 0, "max": 23850 },
+          { "rate": 0.12, "min": 23851, "max": 96950 },
+          { "rate": 0.22, "min": 96951, "max": 206700 },
+          { "rate": 0.24, "min": 206701, "max": 394600 },
+          { "rate": 0.32, "min": 394601, "max": 501050 },
+          { "rate": 0.35, "min": 501051, "max": 751600 },
+          { "rate": 0.37, "min": 751601, "max": null }
+        ]
+      },
+      "head_of_household": {
+        "name": "Head of Household",
+        "standard_deduction": 23625,
+        "brackets": [
+          { "rate": 0.10, "min": 0, "max": 17000 },
+          { "rate": 0.12, "min": 17001, "max": 64850 },
+          { "rate": 0.22, "min": 64851, "max": 103350 },
+          { "rate": 0.24, "min": 103351, "max": 197300 },
+          { "rate": 0.32, "min": 197301, "max": 250500 },
+          { "rate": 0.35, "min": 250501, "max": 626350 },
+          { "rate": 0.37, "min": 626351, "max": null }
+        ]
+      },
+      "married_separate": {
+        "name": "Married Filing Separately",
+        "standard_deduction": 15750,
+        "brackets": [
+          { "rate": 0.10, "min": 0, "max": 11925 },
+          { "rate": 0.12, "min": 11926, "max": 48475 },
+          { "rate": 0.22, "min": 48476, "max": 103350 },
+          { "rate": 0.24, "min": 103351, "max": 197300 },
+          { "rate": 0.32, "min": 197301, "max": 250525 },
+          { "rate": 0.35, "min": 250526, "max": 375800 },
+          { "rate": 0.37, "min": 375801, "max": null }
+        ]
+      }
+    }
+  },
+
+  "long_term_capital_gains_and_qualified_dividends": {
+    "notes": "Applies to assets held more than 1 year and to qualified dividends. Thresholds are taxable income (ordinary income + gains, after deductions), stacked on top of ordinary income. Short-term gains are taxed at ordinary income rates above, not these rates. Collectibles (28%) and unrecaptured Sec. 1250 real estate depreciation recapture (25%) are separate rates not covered here.",
+    "filing_statuses": {
+      "single": {
+        "brackets": [
+          { "rate": 0.00, "min": 0, "max": 48350 },
+          { "rate": 0.15, "min": 48351, "max": 533400 },
+          { "rate": 0.20, "min": 533401, "max": null }
+        ]
+      },
+      "married_joint": {
+        "brackets": [
+          { "rate": 0.00, "min": 0, "max": 96700 },
+          { "rate": 0.15, "min": 96701, "max": 600050 },
+          { "rate": 0.20, "min": 600051, "max": null }
+        ]
+      },
+      "head_of_household": {
+        "brackets": [
+          { "rate": 0.00, "min": 0, "max": 64750 },
+          { "rate": 0.15, "min": 64751, "max": 566700 },
+          { "rate": 0.20, "min": 566701, "max": null }
+        ]
+      },
+      "married_separate": {
+        "brackets": [
+          { "rate": 0.00, "min": 0, "max": 48350 },
+          { "rate": 0.15, "min": 48351, "max": 300000 },
+          { "rate": 0.20, "min": 300001, "max": null }
+        ]
+      }
+    }
+  },
+
+  "net_investment_income_tax": {
+    "name": "Net Investment Income Tax (NIIT)",
+    "rate": 0.038,
+    "notes": "Under IRC section 1411. Applies to the lesser of net investment income or the excess of MAGI over the threshold. On top of, not instead of, ordinary/capital gains rates. Thresholds are fixed by statute since 2013 and are NOT inflation-adjusted.",
+    "magi_thresholds": {
+      "single": 200000,
+      "married_joint": 250000,
+      "head_of_household": 200000,
+      "married_separate": 125000
+    }
+  },
+
+  "additional_medicare_tax": {
+    "name": "Additional Medicare Tax",
+    "rate": 0.009,
+    "notes": "Under IRC section 3101(b)(2). Applies to wages/self-employment income above the threshold, on top of the standard 1.45% Medicare tax. Thresholds are fixed by statute since 2013 and are NOT inflation-adjusted. Based on wages, not filing-status-adjusted taxable income.",
+    "wage_thresholds": {
+      "single": 200000,
+      "married_joint": 250000,
+      "head_of_household": 200000,
+      "married_separate": 125000
+    }
+  },
+
+  "personal_exemption": {
+    "amount": 0,
+    "notes": "Eliminated by the Tax Cuts and Jobs Act (2017) and made permanent at $0 by the One Big Beautiful Bill Act (OBBBA)."
+  },
+
+  "self_employment_tax": {
+    "name": "Self-Employment Tax (SECA)",
+    "notes": "IRC 1401/1402. Charged on `net_earnings_factor` of net self-employment profit. The Social Security portion is capped at `social_security_wage_base`, and W-2 wages consume that cap first; the Medicare portion is uncapped. Half the resulting tax is deductible above the line under IRC 164(f). No tax is due if net earnings fall below `minimum_net_earnings`.",
+    "net_earnings_factor": 0.9235,
+    "social_security_rate": 0.124,
+    "medicare_rate": 0.029,
+    "social_security_wage_base": 176100,
+    "minimum_net_earnings": 400
+  },
+
+  "fica_employee": {
+    "name": "FICA (employee share)",
+    "notes": "Withheld from W-2 wages under IRC 3101. The employer pays a matching share, which is not the employee's cost and is not counted here. Social Security stops at the same wage base as SECA.",
+    "social_security_rate": 0.062,
+    "medicare_rate": 0.0145
+  },
+
+  "social_security_benefits": {
+    "name": "Taxability of Social Security benefits",
+    "notes": "IRC 86. Provisional income = AGI excluding benefits + tax-exempt interest + half the benefits. Below `base_amounts`, nothing is taxable. Between the two thresholds, the taxable share tops out at 50%. Above `adjusted_base_amounts` it tops out at 85%, computed as 85% of the overage plus the lesser of `adjustment_amounts` or half the benefits. None of these figures has ever been indexed — they are fixed at their 1983/1993 values. `married_separate` carries $0 because IRC 86(c)(1)(C) zeroes the base for a spouse who lived with their partner at any point in the year; a separated filer living apart all year gets the single amounts instead, which this calculator does not model.",
+    "base_amounts": {
+      "single": 25000,
+      "married_joint": 32000,
+      "head_of_household": 25000,
+      "married_separate": 0
+    },
+    "adjusted_base_amounts": {
+      "single": 34000,
+      "married_joint": 44000,
+      "head_of_household": 34000,
+      "married_separate": 0
+    },
+    "adjustment_amounts": {
+      "single": 4500,
+      "married_joint": 6000,
+      "head_of_household": 4500,
+      "married_separate": 0
+    },
+    "lower_tier_rate": 0.5,
+    "upper_tier_rate": 0.85
+  },
+
+  "child_tax_credit": {
+    "name": "Child Tax Credit",
+    "notes": "IRC 24 as amended by OBBBA, which raised the credit to $2,200 for tax years beginning after Dec 31, 2024. Non-refundable against income tax; up to `refundable_limit` per child (per Rev. Proc. 2024-40) can be refundable as the Additional Child Tax Credit, which this calculator does NOT pay out — it only reduces tax to zero. Reduced by `phaseout_per` for each `phaseout_step` of MAGI (or fraction of one) above the threshold. `other_dependent_credit` covers dependents who are not qualifying children and is never refundable.",
+    "amount_per_child": 2200,
+    "refundable_limit": 1700,
+    "other_dependent_credit": 500,
+    "phaseout_step": 1000,
+    "phaseout_per": 50,
+    "magi_thresholds": {
+      "single": 200000,
+      "married_joint": 400000,
+      "head_of_household": 200000,
+      "married_separate": 200000
+    }
+  },
+
+  "charitable_deduction_limits": {
+    "notes": "IRC 170(b)(1)(A) — cash gifts to 501(c)(3) public charities are deductible up to this share of AGI. Excess carries forward up to five years. `agi_floor` is 0: OBBBA's 0.5%-of-AGI floor on itemized charitable deductions starts with tax years beginning after Dec 31, 2025, so a 2025 gift is deductible from the first dollar.",
+    "cash_public_charity_agi_limit": 0.6,
+    "agi_floor": 0
+  }
+}

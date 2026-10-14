@@ -16,6 +16,7 @@ import { StepResults } from "@/components/steps/step-results";
 import { StepTax } from "@/components/steps/step-tax";
 import { ModeToggle, type WizardMode } from "@/components/wizard/mode-toggle";
 import { Stepper, type StepMeta } from "@/components/wizard/stepper";
+import { TaxYearToggle } from "@/components/wizard/tax-year-toggle";
 import { formatIsoDate, parseMoney, toMoneyInput } from "@/lib/format";
 import {
   buildComparison,
@@ -23,13 +24,14 @@ import {
   KHUMS_RATE,
   quickEstimateToCalculatorInput,
 } from "@/lib/tax";
-import { ratesLastUpdated, taxYear } from "@/lib/taxData";
+import { DEFAULT_TAX_YEAR, getFederalTax } from "@/lib/taxData";
 import type {
   CharityType,
   DeductionMode,
   Dependents,
   FilingStatus,
   PropertyType,
+  TaxYear,
 } from "@/lib/types";
 
 const STEPS: StepMeta[] = [
@@ -66,6 +68,9 @@ const DEFAULTS = {
 
 export default function Home() {
   const [mode, setMode] = useState<WizardMode>("quick");
+  // Like the mode, the year sits above the answers: switching it recomputes
+  // both flows from the same inputs, and Start over leaves it alone.
+  const [taxYear, setTaxYear] = useState<TaxYear>(DEFAULT_TAX_YEAR);
   const [step, setStep] = useState(0);
   const [furthest, setFurthest] = useState(0);
 
@@ -123,6 +128,7 @@ export default function Home() {
   const comparison = useMemo(
     () =>
       buildComparison({
+        taxYear,
         income,
         expenses,
         donation: parseMoney(effectiveDonationText),
@@ -132,6 +138,7 @@ export default function Home() {
         dependents,
       }),
     [
+      taxYear,
       income,
       expenses,
       effectiveDonationText,
@@ -155,9 +162,11 @@ export default function Home() {
           },
           filingStatus,
           stateCode,
+          taxYear,
         ),
       ),
     [
+      taxYear,
       quickAgiText,
       quickItemizedText,
       quickDonationText,
@@ -211,7 +220,7 @@ export default function Home() {
 
   return (
     <div className="flex min-h-full flex-col">
-      <Header />
+      <Header taxYear={taxYear} onTaxYearChange={setTaxYear} />
 
       <main className="mx-auto w-full max-w-xl flex-1 px-4 pt-4 pb-10 sm:px-6 sm:pt-8 sm:pb-16">
         <div className="mb-4 sm:mb-5">
@@ -259,6 +268,7 @@ export default function Home() {
 
         {mode === "quick" && quickStep === 2 ? (
           <StepQuickGift
+            taxYear={taxYear}
             agiText={quickAgiText}
             donationText={quickDonationText}
             charityType={quickCharityType}
@@ -305,6 +315,7 @@ export default function Home() {
 
         {mode === "detailed" && step === 2 ? (
           <StepTax
+            taxYear={comparison.taxYear}
             scenario={comparison.scenarioA}
             stateEntry={comparison.stateEntry}
             onBack={() => goTo(1)}
@@ -340,21 +351,23 @@ export default function Home() {
         ) : null}
       </main>
 
-      <Credits />
+      <Credits taxYear={taxYear} />
     </div>
   );
 }
 
 /**
- * When the rates last changed, then who built this. The credit line stacks on
- * a phone and sits on one line from `sm` up.
+ * When the selected year's rates last changed, then who built this. The credit
+ * line stacks on a phone and sits on one line from `sm` up.
  */
-function Credits() {
+function Credits({ taxYear }: { taxYear: TaxYear }) {
+  const lastUpdated = getFederalTax(taxYear).last_updated;
+
   return (
     <footer className="border-t border-border/70 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
       <p className="tnum mx-auto w-full max-w-xl px-4 pt-5 text-center text-xs text-muted-foreground sm:px-6 sm:text-left">
         {taxYear} tax rates · last updated{" "}
-        <time dateTime={ratesLastUpdated}>{formatIsoDate(ratesLastUpdated)}</time>
+        <time dateTime={lastUpdated}>{formatIsoDate(lastUpdated)}</time>
       </p>
       <div className="mx-auto flex w-full max-w-xl flex-col items-center gap-1 px-4 pt-3 pb-5 text-center text-sm text-muted-foreground sm:flex-row sm:justify-between sm:px-6 sm:text-left">
         <p>
@@ -375,10 +388,17 @@ function Credits() {
 }
 
 /**
- * One row at every width: logo and name on the left, the rate year on the
- * right. Nothing wraps, so the two sides always share a baseline on a phone.
+ * One row at every width: logo and name on the left, the tax-year switch on
+ * the right. Nothing wraps, so the two sides always share a baseline on a
+ * phone — and since the header sticks, the year can change from any step.
  */
-function Header() {
+function Header({
+  taxYear,
+  onTaxYearChange,
+}: {
+  taxYear: TaxYear;
+  onTaxYearChange: (year: TaxYear) => void;
+}) {
   return (
     <header className="sticky top-0 z-20 border-b border-border/70 bg-background/85 pt-[env(safe-area-inset-top)] backdrop-blur-md">
       <div className="mx-auto flex h-14 w-full max-w-xl items-center justify-between gap-3 px-4 sm:px-6">
@@ -395,9 +415,7 @@ function Header() {
           </span>
         </div>
 
-        <span className="tnum shrink-0 rounded-full border border-border bg-card px-2.5 py-1 text-xs font-medium whitespace-nowrap text-muted-foreground">
-          {taxYear} rates
-        </span>
+        <TaxYearToggle value={taxYear} onChange={onTaxYearChange} />
       </div>
     </header>
   );

@@ -1,8 +1,10 @@
-import federalJson from "@/data/federal_tax.json";
+import federal2025Json from "@/data/federal_tax_2025.json";
+import federal2026Json from "@/data/federal_tax_2026.json";
 import type { FederalTaxData } from "./types";
 
 /**
- * Compile-time guard: `tsc --noEmit` fails here if data/federal_tax.json
+ * Compile-time guard: `tsc --noEmit` fails here if a data/federal_tax_<year>.json
  * (e.g. after scripts/update-tax-data.mjs) stops matching FederalTaxData.
  */
-export const federalTaxDataMatchesTypes: FederalTaxData = federalJson;
+export const federal2025MatchesTypes: FederalTaxData = federal2025Json;
+export const federal2026MatchesTypes: FederalTaxData = federal2026Json;

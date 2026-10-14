@@ -1,6 +1,12 @@
 #!/usr/bin/env node
 /**
- * Refreshes the inflation-indexed figures in data/federal_tax.json.
+ * Refreshes the inflation-indexed figures in data/federal_tax_<year>.json.
+ *
+ * Each tax year has its own file. A source for the newest committed year
+ * refreshes that file in place; a source for a later year writes a new file,
+ * seeded from the newest one so the statutory figures carry over. Past years
+ * are final and never rewritten (short of --force). A new file is not live
+ * until its year is registered in lib/types.ts and lib/taxData.ts.
  *
  * Build-time / CI only. The app never fetches anything in the browser, and no
  * API key is involved: the source is a plain public JSON document.
@@ -12,7 +18,7 @@
  *   node scripts/update-tax-data.mjs --force         skip the year and drift guards
  *
  * Source: $TAX_DATA_SOURCE_URL (or --file). The document is a partial copy of
- * data/federal_tax.json — only these keys are read, everything else is ignored:
+ * a data/federal_tax_<year>.json — only these keys are read, everything else is ignored:
  *
  *   tax_year, source,
  *   ordinary_income_tax.filing_statuses.<status>.{standard_deduction, brackets}
@@ -26,13 +32,14 @@
  * rates, the CTC) are deliberately NOT updated here: they are not indexed
  * annually, and changing them is a legislative edit that deserves a human.
  */
-import { readFile, writeFile } from "node:fs/promises";
+import { readdir, readFile, writeFile } from "node:fs/promises";
 import { isDeepStrictEqual } from "node:util";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const DATA_FILE = path.join(ROOT, "data", "federal_tax.json");
+const DATA_DIR = path.join(ROOT, "data");
+const dataFileName = (year) => `federal_tax_${year}.json`;
 
 const STATUSES = ["single", "married_joint", "head_of_household", "married_separate"];
 /** A year-over-year move bigger than this is a bad source, not inflation. */
@@ -49,6 +56,22 @@ const DRY = flag("--dry-run");
 const FORCE = flag("--force");
 
 class SkipError extends Error {}
+
+// ------------------------------------------------------------------ files
+
+/** Years with a committed data/federal_tax_<year>.json, oldest first. */
+async function committedYears() {
+  const names = await readdir(DATA_DIR);
+  return names
+    .map((name) => /^federal_tax_(\d{4})\.json$/.exec(name)?.[1])
+    .filter(Boolean)
+    .map(Number)
+    .sort((a, b) => a - b);
+}
+
+async function readYear(year) {
+  return JSON.parse(await readFile(path.join(DATA_DIR, dataFileName(year)), "utf8"));
+}
 
 // ------------------------------------------------------------------ source
 
@@ -199,30 +222,43 @@ function serialize(data) {
 // ------------------------------------------------------------------- main
 
 async function main() {
-  const current = JSON.parse(await readFile(DATA_FILE, "utf8"));
+  const years = await committedYears();
+  const latestYear = years.at(-1);
+  if (latestYear === undefined) throw new Error("No data/federal_tax_<year>.json to update.");
+  const latest = await readYear(latestYear);
   const src = await loadSource();
 
   const errors = validateSource(src);
   if (errors.length) throw new Error(`Source failed validation:\n  - ${errors.join("\n  - ")}`);
 
   if (!FORCE) {
-    const guard = checkAgainstCurrent(current, src);
+    const guard = checkAgainstCurrent(latest, src);
     if (guard.length) throw new Error(`Source failed sanity checks:\n  - ${guard.join("\n  - ")}`);
   }
 
+  // Refresh the source's own year when it is on file; a new year starts from
+  // the newest one, so the statutory figures it does not carry are kept.
+  const current = years.includes(src.tax_year) ? await readYear(src.tax_year) : latest;
+  const target = `data/${dataFileName(src.tax_year)}`;
+
   const next = merge(current, src);
   if (isDeepStrictEqual(current, next)) {
-    console.log(`federal_tax.json already current (tax year ${current.tax_year}).`);
+    console.log(`${target} already current.`);
     return;
   }
   next.last_updated = new Date().toISOString().slice(0, 10);
 
+  const isNewYear = !years.includes(next.tax_year);
   if (DRY) {
-    console.log(`[dry-run] would update ${current.tax_year} -> ${next.tax_year}.`);
+    console.log(`[dry-run] would ${isNewYear ? "add" : "update"} ${target}.`);
     return;
   }
-  await writeFile(DATA_FILE, serialize(next), "utf8");
-  console.log(`Updated data/federal_tax.json: ${current.tax_year} -> ${next.tax_year}.`);
+  await writeFile(path.join(ROOT, target), serialize(next), "utf8");
+  console.log(
+    isNewYear
+      ? `Added ${target}, seeded from ${latestYear}. Register ${next.tax_year} in lib/types.ts and lib/taxData.ts to offer it.`
+      : `Updated ${target}.`,
+  );
 }
 
 main().catch((error) => {

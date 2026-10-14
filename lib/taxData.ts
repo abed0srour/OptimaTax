@@ -1,5 +1,7 @@
-import federalJson from "@/data/federal_tax.json";
-import stateJson from "@/data/state_tax.json";
+import federal2025Json from "@/data/federal_tax_2025.json";
+import federal2026Json from "@/data/federal_tax_2026.json";
+import state2025Json from "@/data/state_tax_2025.json";
+import state2026Json from "@/data/state_tax_2026.json";
 import type {
   Bracket,
   FederalTaxData,
@@ -7,14 +9,46 @@ import type {
   RawBracket,
   StateTaxData,
   StateTaxEntry,
+  TaxYear,
 } from "./types";
 
-export const federalTax = federalJson as unknown as FederalTaxData;
-const stateTaxRaw = stateJson as unknown as StateTaxData;
+/**
+ * Federal figures by tax year. Adding a year takes a new
+ * `data/federal_tax_<year>.json` and `data/state_tax_<year>.json`, an entry
+ * here and in `STATE_TAX`, and the year in the `TaxYear` union — the `Record`
+ * types won't compile until all agree.
+ */
+const FEDERAL_TAX: Record<TaxYear, FederalTaxData> = {
+  2025: federal2025Json as unknown as FederalTaxData,
+  2026: federal2026Json as unknown as FederalTaxData,
+};
 
-export const taxYear = federalTax.tax_year;
-export const ratesLastUpdated = federalTax.last_updated;
-export const stateTaxYear = stateTaxRaw.jurisdiction_year;
+/**
+ * State schedules by tax year. A year may borrow another year's file while its
+ * own is missing; its `jurisdiction_year` keeps that visible, because the
+ * results screen flags any year whose state schedules come from a different year.
+ */
+const STATE_TAX: Record<TaxYear, StateTaxData> = {
+  2025: state2025Json as unknown as StateTaxData,
+  2026: state2026Json as unknown as StateTaxData,
+};
+
+/** The years the calculator can switch between, oldest first. */
+export const TAX_YEARS = (Object.keys(FEDERAL_TAX).map(Number) as TaxYear[]).sort(
+  (a, b) => a - b,
+);
+
+/** The newest year on file — what the calculator opens on. */
+export const DEFAULT_TAX_YEAR: TaxYear = TAX_YEARS[TAX_YEARS.length - 1];
+
+export function getFederalTax(year: TaxYear): FederalTaxData {
+  return FEDERAL_TAX[year];
+}
+
+/** The year of the state schedules applied when computing `year`. */
+export function stateTaxYear(year: TaxYear): number {
+  return STATE_TAX[year].jurisdiction_year;
+}
 
 export const FILING_STATUS_IDS: FilingStatus[] = [
   "single",
@@ -39,71 +73,62 @@ export function normalizeBrackets(brackets: RawBracket[] = []): Bracket[] {
 }
 
 /**
- * States that grant no deduction for charitable contributions, so a donation
- * produces no state-level saving there. This is a statutory fact rather than a
- * yearly rate, and the 2026 dataset does not carry it, so it lives here.
+ * All 50 states + DC, resolved and sorted alphabetically by name. Whether a
+ * gift deducts is read per year, because states do repeal and restore it.
  */
-const NO_CHARITABLE_DEDUCTION: Record<string, string> = {
-  CT: "Connecticut allows no itemized deductions, so the donation lowers the federal bill only.",
-  IL: "Illinois taxes federal AGI with no itemized deductions, so the donation lowers the federal bill only.",
-  IN: "Indiana allows no charitable deduction against state income tax.",
-  MI: "Michigan allows no charitable deduction against state income tax.",
-  NJ: "New Jersey allows no charitable deduction against gross income tax.",
-  OH: "Ohio allows no charitable deduction against state income tax.",
-  PA: "Pennsylvania allows no charitable deduction against personal income tax.",
-  RI: "Rhode Island eliminated itemized deductions, so the donation lowers the federal bill only.",
-  WV: "West Virginia allows no charitable deduction against state income tax.",
-};
+function resolveStates(data: StateTaxData): StateTaxEntry[] {
+  return Object.entries(data.states)
+    .map(([code, entry]): StateTaxEntry => ({
+      code,
+      name: entry.name,
+      tax_type: entry.tax_type,
+      rate: entry.tax_type === "flat" ? entry.rate : undefined,
+      brackets: entry.tax_type === "graduated" ? normalizeBrackets(entry.brackets) : [],
+      standardDeduction: entry.standard_deduction,
+      personalExemption: entry.personal_exemption,
+      allowsCharitableDeduction: entry.charitable_deduction,
+      note: entry.note,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
 
-/** All 50 states + DC, resolved and sorted alphabetically by name. */
-export const states: StateTaxEntry[] = Object.entries(stateTaxRaw.states)
-  .map(([code, entry]): StateTaxEntry => ({
-    code,
-    name: entry.name,
-    tax_type: entry.tax_type,
-    rate: entry.tax_type === "flat" ? entry.rate : undefined,
-    brackets: entry.tax_type === "graduated" ? normalizeBrackets(entry.brackets) : [],
-    allowsCharitableDeduction: !(code in NO_CHARITABLE_DEDUCTION),
-    note: NO_CHARITABLE_DEDUCTION[code],
-  }))
-  .sort((a, b) => a.name.localeCompare(b.name));
+const stateByCodeByYear = Object.fromEntries(
+  TAX_YEARS.map((year) => [
+    year,
+    new Map(resolveStates(STATE_TAX[year]).map((state) => [state.code, state])),
+  ]),
+) as Record<TaxYear, Map<string, StateTaxEntry>>;
 
-const stateByCode = new Map(states.map((state) => [state.code, state]));
+/** The state picker's list. Names and codes are the same in every year. */
+export const states: StateTaxEntry[] = [
+  ...stateByCodeByYear[DEFAULT_TAX_YEAR].values(),
+];
 
-export function getState(code: string): StateTaxEntry {
-  const entry = stateByCode.get(code);
+export function getState(code: string, year: TaxYear): StateTaxEntry {
+  const entry = stateByCodeByYear[year].get(code);
   if (!entry) throw new Error(`Unknown state code: ${code}`);
   return entry;
 }
 
 export const filingStatuses = FILING_STATUS_IDS.map((id) => ({
   id,
-  label: federalTax.ordinary_income_tax.filing_statuses[id].name,
+  label: FEDERAL_TAX[DEFAULT_TAX_YEAR].ordinary_income_tax.filing_statuses[id].name,
 }));
 
-export function federalStandardDeduction(status: FilingStatus): number {
-  return federalTax.ordinary_income_tax.filing_statuses[status].standard_deduction;
+export function federalStandardDeduction(status: FilingStatus, year: TaxYear): number {
+  return FEDERAL_TAX[year].ordinary_income_tax.filing_statuses[status].standard_deduction;
 }
 
-export function federalBrackets(status: FilingStatus): Bracket[] {
+export function federalBrackets(status: FilingStatus, year: TaxYear): Bracket[] {
   return normalizeBrackets(
-    federalTax.ordinary_income_tax.filing_statuses[status].brackets,
+    FEDERAL_TAX[year].ordinary_income_tax.filing_statuses[status].brackets,
   );
 }
 
-/**
- * Long-term capital gains and qualified dividend brackets. Present in the data
- * and typed for use, but the dashboard currently models ordinary income only.
- */
-export function capitalGainsBrackets(status: FilingStatus): Bracket[] {
+/** Long-term capital gains and qualified dividend brackets, stacked on ordinary income. */
+export function capitalGainsBrackets(status: FilingStatus, year: TaxYear): Bracket[] {
   return normalizeBrackets(
-    federalTax.long_term_capital_gains_and_qualified_dividends.filing_statuses[status]
+    FEDERAL_TAX[year].long_term_capital_gains_and_qualified_dividends.filing_statuses[status]
       .brackets,
   );
 }
-
-export const dataNotes = {
-  federalSource: federalTax.source,
-  federalNotes: federalTax.notes,
-  stateNotes: stateTaxRaw.notes,
-};

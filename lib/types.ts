@@ -6,6 +6,9 @@ export type FilingStatus =
 
 export type StateTaxType = "none" | "flat" | "graduated";
 
+/** A tax year the calculator carries figures for. Registered in `lib/taxData.ts`. */
+export type TaxYear = 2025 | 2026;
+
 /**
  * A bracket exactly as it appears in the JSON, following the IRS table
  * convention where `min` sits one dollar above the previous bracket's `max`.
@@ -61,6 +64,8 @@ export interface FederalTaxData {
   charitable_deduction_limits: {
     notes: string;
     cash_public_charity_agi_limit: number;
+    /** Share of AGI an itemized gift must clear before it deducts; 0 before 2026. */
+    agi_floor: number;
   };
   self_employment_tax: {
     name: string;
@@ -105,10 +110,19 @@ export interface RawStateEntry {
   rate?: number;
   /** Present for `graduated` states only. Single-filer schedule. */
   brackets?: RawBracket[];
+  /** Single filer's base standard deduction, before any income phase-out. 0 if none. */
+  standard_deduction: number;
+  /** Single filer's own exemption where it is a deduction from income. 0 if none or a credit. */
+  personal_exemption: number;
+  /** False where a single filer has no route to deduct a gift to a 501(c)(3). */
+  charitable_deduction: boolean;
+  /** Why the state treats gifts or deductions the way it does, when that needs saying. */
+  note?: string;
 }
 
 export interface StateTaxData {
   jurisdiction_year: number;
+  source: string;
   notes: string;
   /** Keyed by two-letter postal code. */
   states: Record<string, RawStateEntry>;
@@ -124,6 +138,10 @@ export interface StateTaxEntry {
   rate?: number;
   /** Normalized half-open brackets. Empty for `none` and `flat` states. */
   brackets: Bracket[];
+  /** Single filer's standard deduction, in dollars. 0 where the state has none. */
+  standardDeduction: number;
+  /** Single filer's personal exemption, in dollars, where it is a deduction. */
+  personalExemption: number;
   /** False where the state grants no deduction for charitable contributions. */
   allowsCharitableDeduction: boolean;
   /** Caveat surfaced in the UI for this specific state, if any. */
@@ -241,7 +259,11 @@ export interface ScenarioBreakdown {
   donationApplied: number;
   /** Adjusted gross income: every source, less the deductible half of SE tax. */
   agi: number;
+  /** Everything subtracted from AGI to reach federal taxable income. */
+  federalDeduction: number;
   federalTaxableIncome: number;
+  /** State standard deduction or itemized total, plus the personal exemption. */
+  stateDeduction: number;
   stateTaxableIncome: number;
   /** Taxable income taxed at ordinary rates (total less the gains on top). */
   ordinaryTaxableIncome: number;
@@ -294,6 +316,12 @@ export interface BracketTarget {
 }
 
 export interface TaxComparison {
+  /** The year whose federal figures produced every number here. */
+  taxYear: TaxYear;
+  /** Year of the state schedules applied — trails `taxYear` when that year's are missing. */
+  stateTaxYear: number;
+  /** The federal standard deduction for this year and filing status. */
+  federalStandardDeduction: number;
   netProfit: number;
   donationEntered: number;
   /** Donation after applying the federal AGI ceiling for cash gifts. */
@@ -358,6 +386,8 @@ export interface CharitableLimit {
 }
 
 export interface CalculatorInput {
+  /** Which year's brackets, deductions and thresholds to apply. */
+  taxYear: TaxYear;
   income: IncomeSources;
   /** Business expenses, deducted from self-employment revenue only. */
   expenses: number;
@@ -367,9 +397,9 @@ export interface CalculatorInput {
   deductionMode: DeductionMode;
   dependents: Dependents;
   /**
-   * Apply the 2026 floor on itemized charitable gifts: only the part of the
-   * gift above 0.5% of AGI is deductible. Opt-in so the detailed flow, which
-   * does not model it, keeps its existing numbers.
+   * Apply the floor on itemized charitable gifts (0.5% of AGI from 2026, none
+   * before): only the part of the gift above it is deductible. Opt-in so the
+   * detailed flow, which does not model it, keeps its existing numbers.
    */
   applyCharitableFloor?: boolean;
   /** Receiving organization; defaults to a public charity. */

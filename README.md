@@ -123,8 +123,10 @@ Keep the source files in IRS convention. Values can then be pasted straight from
 │       ├── bracket-table.tsx  Chunk-by-chunk bracket audit trail
 │       └── limitations.tsx    Scope and caveats
 ├── data/
-│   ├── federal_tax.json      Filing statuses, standard deductions, brackets
-│   └── state_tax.json        50 states + DC by tax_type: none | flat | graduated
+│   ├── federal_tax_2025.json Filing statuses, standard deductions, brackets — one file per year
+│   ├── federal_tax_2026.json
+│   ├── state_tax_2025.json   50 states + DC: brackets, standard deduction, exemption — one file per year
+│   └── state_tax_2026.json
 └── lib/
     ├── types.ts              Shared types for the data files and results
     ├── taxData.ts            Typed imports + lookup helpers
@@ -134,24 +136,41 @@ Keep the source files in IRS convention. Values can then be pasted straight from
 
 ### Data file shape
 
-`federal_tax.json` nests each filing status under `ordinary_income_tax.filing_statuses`, and additionally carries long-term capital gains brackets, NIIT thresholds, Additional Medicare Tax thresholds, self-employment and FICA rates, the Child Tax Credit schedule, and the personal exemption. All of these are wired into the engine; only the personal exemption sits unused, and it is $0 by statute anyway.
+Each `federal_tax_<year>.json` nests each filing status under `ordinary_income_tax.filing_statuses`, and additionally carries long-term capital gains brackets, NIIT thresholds, Additional Medicare Tax thresholds, self-employment and FICA rates, the Child Tax Credit schedule, the charitable AGI ceiling and floor, and the personal exemption. All of these are wired into the engine; only the personal exemption sits unused, and it is $0 by statute anyway.
 
-`state_tax.json` is an object keyed by postal code, holding **single-filer schedules only**:
+### Tax years
+
+The **2025 | 2026** switch in the header picks which year's figures the engine applies. It sits above the answers: switching recomputes both flows from the same inputs, and *Start over* leaves it alone. Every function in `lib/tax.ts` that reads federal figures takes the year, and `CalculatorInput.taxYear` carries it into `buildComparison`.
+
+[lib/taxData.ts](lib/taxData.ts) maps each year to its data files. To add a year: commit `data/federal_tax_<year>.json` (`npm run update-tax-data` writes it, seeded from the newest year), commit a matching `data/state_tax_<year>.json` (by hand — the update script covers federal figures only), add the year to `TaxYear` in [lib/types.ts](lib/types.ts), to `FEDERAL_TAX` and `STATE_TAX` in `lib/taxData.ts`, and to [lib/federalTaxData.check.ts](lib/federalTaxData.check.ts). The newest year is the default.
+
+Each year has its own state file too. Should a year ever lack one, `STATE_TAX` can point it at another year's file; the results screen then names the year of the state schedules actually used.
+
+Each `state_tax_<year>.json` is an object keyed by postal code, holding **single-filer figures only**:
 
 ```jsonc
-"MT": {
-  "name": "Montana",
+"VA": {
+  "name": "Virginia",
   "tax_type": "graduated",
   "brackets": [
-    { "rate": 0.047, "min": 0,     "max": 20500 },
-    { "rate": 0.0565, "min": 20501, "max": null }
-  ]
+    { "rate": 0.02, "min": 0, "max": 3000 },
+    { "rate": 0.03, "min": 3001, "max": 5000 },
+    { "rate": 0.05, "min": 5001, "max": 17000 },
+    { "rate": 0.0575, "min": 17001, "max": null }
+  ],
+  "standard_deduction": 8500,
+  "personal_exemption": 930,
+  "charitable_deduction": true
 }
 ```
 
-A `max` of `null` marks the open-ended top bracket. `none` states carry `rate: 0.0` and no brackets; `flat` states carry a `rate` and no brackets.
+A `max` of `null` marks the open-ended top bracket. `none` states carry `rate: 0` and no brackets; `flat` states carry a `rate` and no brackets. A 0% band at the bottom of a state's own rate schedule (Idaho, Mississippi, Ohio…) is a bracket with `rate: 0`.
 
-The dataset has no per-status state brackets and no state standard deductions, so [lib/taxData.ts](lib/taxData.ts) resolves each raw entry into a `StateTaxEntry` — adding the postal code, normalizing brackets, and attaching an `allowsCharitableDeduction` flag. That flag lives in code rather than in the JSON because it is a statutory fact, not an annually-adjusted rate.
+- `standard_deduction` is the single filer's base amount, before any income phase-out. States that build on the federal deduction carry the dollar figure they actually allow that year.
+- `personal_exemption` counts only where the exemption is a deduction from income. Where it is a credit (California, Oregon, Nebraska…) it is `0` here.
+- `charitable_deduction` is `false` where a single filer has no route to deduct a gift — no itemized deductions and no charitable subtraction. It is per year because states repeal and restore it.
+
+[lib/taxData.ts](lib/taxData.ts) resolves each raw entry into a `StateTaxEntry`: postal code added, brackets normalized. The engine then stacks the state's standard deduction against the gift exactly as it does federally, and takes the exemption off on top.
 
 ### The engine
 
@@ -159,7 +178,7 @@ The dataset has no per-status state brackets and no state standard deductions, s
 
 ```ts
 calculateProgressiveTax(taxableIncome, brackets) // walks brackets chunk by chunk
-calculateFederalTax(taxableIncome, status)       // reads federal_tax.json
+calculateFederalTax(taxableIncome, status, year) // reads federal_tax_<year>.json
 calculateStateTax(taxableIncome, state)          // dispatches on tax_type
 calculateNetProfit(income, expenses)             // floored at zero
 calculateKhums(netProfit, donation)              // 1/5 obligation + coverage
@@ -208,10 +227,10 @@ This is an educational estimator, not tax or religious advice.
 - **Married-filing-separately Social Security is modeled at the harsher base of $0**, per IRC 86(c)(1)(C), which applies to a spouse who lived with their partner at any point in the year. A separated filer who lived apart all year gets the single thresholds and will see benefits overstated as taxable here.
 - **No senior deduction or age input.** OBBBA's $6,000 deduction for filers 65+ is not modeled.
 - **State brackets are single-filer schedules, applied to every filing status.** The dataset carries no married-filing-jointly thresholds, which are wider in many states — joint filers will see state tax overstated.
-- **No state standard deductions or exemptions.** The dataset omits them, so state taxable income is the full net profit less any deductible gift. Real state bills will generally be lower.
+- **State deductions are simplified.** Each state's single-filer standard deduction and personal exemption are applied at their base amounts: income phase-outs (Wisconsin's sliding deduction, Minnesota's, Rhode Island's) are not, nor are exemption *credits*, the federal-tax deduction a few states allow, or benefit recapture (Connecticut, New York). In `itemized` mode the other itemized deductions entered are assumed to carry to the state return.
 - **State income tax only.** City and county income taxes are excluded — NYC and Yonkers, Maryland counties, Ohio municipalities, Indiana counties, Pennsylvania local EIT.
-- **Tax year 2026** throughout: federal per IRS Rev. Proc. 2025-32, state schedules per the accompanying dataset.
-- **Two OBBBA charitable provisions effective 2026 are not modeled** — the new 0.5%-of-AGI floor on itemized charitable deductions, and the 35% cap on itemized deduction value for top-bracket filers. Both would reduce the savings shown.
+- **Tax years 2025 and 2026**: federal 2025 per IRS Rev. Proc. 2024-40 with OBBBA's higher standard deductions, federal 2026 per Rev. Proc. 2025-32. State figures per each state's own published schedules for that year; each file's `source` and `notes` say where they come from.
+- **OBBBA's 2026 charitable provisions are only partly modeled.** The new 0.5%-of-AGI floor on itemized gifts applies in Quick Estimate from 2026 (not in 2025, and not in the detailed flow). The 35% cap on itemized deduction value for top-bracket filers is not modeled, and both would reduce the savings shown. Nor is the new deduction for non-itemizers (up to $1,000 single, $2,000 joint, from 2026), which would *raise* the savings on a gift too small to itemize.
 - **Khums rulings vary by school and marja'.** The tool computes the common 1/5 of annual surplus. It does not rule on whether a given 501(c)(3) is a valid recipient of sahm al-imam or sahm al-sada — that is a question for your marja', and under many rulings a US charity is *not* a valid recipient of the imam's share.
 
 Confirm anything consequential with a qualified CPA.

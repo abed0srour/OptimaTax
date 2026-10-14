@@ -66,7 +66,7 @@ export function StepGiving({
   return (
     <StepCard
       title="How much will you give?"
-      subtitle="To a 501(c)(3) charity, this year."
+      subtitle={`To a 501(c)(3) charity, in ${comparison.taxYear}.`}
       footer={
         <StepNav onBack={onBack} onNext={onNext} nextLabel="See my results" />
       }

@@ -2,8 +2,9 @@ import {
   capitalGainsBrackets,
   federalBrackets,
   federalStandardDeduction,
-  federalTax,
+  getFederalTax,
   getState,
+  stateTaxYear,
 } from "./taxData";
 import type {
   Bracket,
@@ -26,6 +27,7 @@ import type {
   SocialSecurityTaxability,
   StateTaxEntry,
   TaxComparison,
+  TaxYear,
 } from "./types";
 
 /** Khums is one fifth of the net surplus remaining after the year's expenses. */
@@ -42,12 +44,13 @@ const CHARITABLE_AGI_LIMITS = {
 
 /** Share of AGI that a gift to this kind of charity, of this kind of asset, may deduct. */
 export function charitableAgiRate(
+  taxYear: TaxYear,
   charityType: CharityType = "public",
   propertyType: PropertyType = "cash",
 ): number {
   if (charityType === "public") {
     return propertyType === "cash"
-      ? federalTax.charitable_deduction_limits.cash_public_charity_agi_limit
+      ? getFederalTax(taxYear).charitable_deduction_limits.cash_public_charity_agi_limit
       : CHARITABLE_AGI_LIMITS.public.appreciated_property;
   }
   return CHARITABLE_AGI_LIMITS.private[propertyType];
@@ -64,10 +67,11 @@ export function charitableAgiRate(
 export function calculateCharitableLimit(
   donation: number,
   agi: number,
+  taxYear: TaxYear,
   charityType: CharityType = "public",
   propertyType: PropertyType = "cash",
 ): CharitableLimit {
-  const rate = charitableAgiRate(charityType, propertyType);
+  const rate = charitableAgiRate(taxYear, charityType, propertyType);
   const ceiling = clampToZero(agi) * rate;
   const given = clampToZero(donation);
   const deductible = Math.min(given, ceiling);
@@ -79,14 +83,16 @@ export function calculateCharitableLimit(
  * Quick Estimate answers as engine input: the one AGI figure enters as ordinary
  * income, so the engine's AGI equals it. "Itemized" is the real IRS rule — the
  * gift only helps once itemizing beats the standard deduction — and is when the
- * 0.5% floor applies.
+ * charitable floor (from 2026) applies.
  */
 export function quickEstimateToCalculatorInput(
   quick: QuickEstimateInput,
   filingStatus: FilingStatus,
   stateCode: string,
+  taxYear: TaxYear,
 ): CalculatorInput {
   return {
+    taxYear,
     income: {
       wages: 0,
       selfEmployment: 0,
@@ -111,9 +117,6 @@ export function quickEstimateToCalculatorInput(
     otherItemizedDeductions: quick.itemizedExpenses,
   };
 }
-
-/** Itemized charitable gifts only count above this share of AGI (tax years 2026+). */
-export const CHARITABLE_AGI_FLOOR = 0.005;
 
 const EMPTY_RESULT: ProgressiveResult = {
   tax: 0,
@@ -225,19 +228,20 @@ export function calculateStackedTax(
   };
 }
 
-/** Federal ordinary income tax for a filing status, from `data/federal_tax.json`. */
+/** Federal ordinary income tax for a filing status, from `data/federal_tax_<year>.json`. */
 export function calculateFederalTax(
   taxableIncome: number,
   status: FilingStatus,
+  taxYear: TaxYear,
 ): ProgressiveResult {
-  return calculateProgressiveTax(taxableIncome, federalBrackets(status));
+  return calculateProgressiveTax(taxableIncome, federalBrackets(status, taxYear));
 }
 
 /**
  * State income tax, dispatched on the state's `tax_type`:
  * `none` → $0, `flat` → single-rate, `graduated` → progressive loop.
  *
- * The 2026 dataset carries single-filer schedules only, so filing status does
+ * The state datasets carry single-filer schedules only, so filing status does
  * not enter the state calculation.
  */
 export function calculateStateTax(
@@ -282,8 +286,9 @@ export function calculateSelfEmploymentProfit(
 export function calculateSelfEmploymentTax(
   selfEmploymentProfit: number,
   wages: number,
+  taxYear: TaxYear,
 ): SelfEmploymentTax {
-  const config = federalTax.self_employment_tax;
+  const config = getFederalTax(taxYear).self_employment_tax;
   const netEarnings = clampToZero(selfEmploymentProfit) * config.net_earnings_factor;
   if (netEarnings < config.minimum_net_earnings) return NO_SE_TAX;
 
@@ -304,9 +309,10 @@ export function calculateSelfEmploymentTax(
 }
 
 /** The employee's own FICA on W-2 wages. The employer's match is not your cost. */
-export function calculateFicaWithheld(wages: number): number {
-  const config = federalTax.fica_employee;
-  const base = federalTax.self_employment_tax.social_security_wage_base;
+export function calculateFicaWithheld(wages: number, taxYear: TaxYear): number {
+  const federal = getFederalTax(taxYear);
+  const config = federal.fica_employee;
+  const base = federal.self_employment_tax.social_security_wage_base;
   const paid = clampToZero(wages);
 
   return (
@@ -319,8 +325,9 @@ export function calculateFicaWithheld(wages: number): number {
 export function calculateAdditionalMedicare(
   earnedIncome: number,
   status: FilingStatus,
+  taxYear: TaxYear,
 ): number {
-  const config = federalTax.additional_medicare_tax;
+  const config = getFederalTax(taxYear).additional_medicare_tax;
   const excess = clampToZero(
     clampToZero(earnedIncome) - config.wage_thresholds[status],
   );
@@ -332,8 +339,9 @@ export function calculateNetInvestmentIncomeTax(
   investmentIncome: number,
   magi: number,
   status: FilingStatus,
+  taxYear: TaxYear,
 ): number {
-  const config = federalTax.net_investment_income_tax;
+  const config = getFederalTax(taxYear).net_investment_income_tax;
   const overage = clampToZero(clampToZero(magi) - config.magi_thresholds[status]);
   return Math.min(clampToZero(investmentIncome), overage) * config.rate;
 }
@@ -351,8 +359,9 @@ export function calculateSocialSecurityTaxability(
   otherIncome: number,
   taxExemptInterest: number,
   status: FilingStatus,
+  taxYear: TaxYear,
 ): SocialSecurityTaxability {
-  const config = federalTax.social_security_benefits;
+  const config = getFederalTax(taxYear).social_security_benefits;
   const received = clampToZero(benefits);
 
   const provisionalIncome =
@@ -408,8 +417,9 @@ export function calculateChildTaxCredit(
   magi: number,
   status: FilingStatus,
   incomeTax: number,
+  taxYear: TaxYear,
 ): CreditBreakdown {
-  const config = federalTax.child_tax_credit;
+  const config = getFederalTax(taxYear).child_tax_credit;
   const children = Math.max(0, Math.floor(dependents.qualifyingChildren));
   const others = Math.max(0, Math.floor(dependents.otherDependents));
 
@@ -535,9 +545,10 @@ function calculateAgiParts(
   income: IncomeSources,
   expenses: number,
   status: FilingStatus,
+  taxYear: TaxYear,
 ): { agi: number; socialSecurity: SocialSecurityTaxability } {
   const seProfit = calculateSelfEmploymentProfit(income, expenses);
-  const seTax = calculateSelfEmploymentTax(seProfit, clampToZero(income.wages));
+  const seTax = calculateSelfEmploymentTax(seProfit, clampToZero(income.wages), taxYear);
 
   const ordinaryBeforeBenefits = ordinaryIncomeExcludingBenefits(income, expenses);
   const gains = clampToZero(income.longTermCapitalGains);
@@ -547,6 +558,7 @@ function calculateAgiParts(
     ordinaryBeforeBenefits + gains - seTax.deductiblePortion,
     income.taxExemptInterest,
     status,
+    taxYear,
   );
 
   const agi = clampToZero(
@@ -570,13 +582,13 @@ export function calculateBracketTarget(
   input: CalculatorInput,
   donation: number,
 ): BracketTarget | null {
-  const { income, expenses, filingStatus, deductionMode } = input;
+  const { taxYear, income, expenses, filingStatus, deductionMode } = input;
 
-  const brackets = federalBrackets(filingStatus);
-  const standardDeduction = federalStandardDeduction(filingStatus);
+  const brackets = federalBrackets(filingStatus, taxYear);
+  const standardDeduction = federalStandardDeduction(filingStatus, taxYear);
   const givenDonation = clampToZero(donation);
 
-  const { agi } = calculateAgiParts(income, expenses, filingStatus);
+  const { agi } = calculateAgiParts(income, expenses, filingStatus, taxYear);
   const gains = clampToZero(income.longTermCapitalGains);
 
   const taxableIncome = clampToZero(
@@ -624,38 +636,41 @@ function buildScenario(
   donation: number,
   state: StateTaxEntry,
 ): ScenarioBreakdown {
-  const { income, expenses, filingStatus, deductionMode, dependents } = input;
+  const { taxYear, income, expenses, filingStatus, deductionMode, dependents } = input;
 
   const wages = clampToZero(income.wages);
   const gains = clampToZero(income.longTermCapitalGains);
 
   const seProfit = calculateSelfEmploymentProfit(income, expenses);
-  const selfEmployment = calculateSelfEmploymentTax(seProfit, wages);
-  const ficaWithheld = calculateFicaWithheld(wages);
+  const selfEmployment = calculateSelfEmploymentTax(seProfit, wages, taxYear);
+  const ficaWithheld = calculateFicaWithheld(wages, taxYear);
 
   const grossIncome = calculateNetProfit(income, expenses);
-  const { agi, socialSecurity } = calculateAgiParts(income, expenses, filingStatus);
-
-  const federalTaxableIncome = clampToZero(
-    agi -
-      totalDeduction(
-        federalStandardDeduction(filingStatus),
-        donation,
-        deductionMode,
-        input.otherItemizedDeductions,
-      ),
+  const { agi, socialSecurity } = calculateAgiParts(
+    income,
+    expenses,
+    filingStatus,
+    taxYear,
   );
+
+  const federalDeduction = totalDeduction(
+    federalStandardDeduction(filingStatus, taxYear),
+    donation,
+    deductionMode,
+    input.otherItemizedDeductions,
+  );
+  const federalTaxableIncome = clampToZero(agi - federalDeduction);
 
   // Gains sit on top: deductions eat ordinary income first, and whatever gains
   // survive are taxed at preferential rates from the ordinary income upward.
   const gainsTaxableIncome = Math.min(gains, federalTaxableIncome);
   const ordinaryTaxableIncome = federalTaxableIncome - gainsTaxableIncome;
 
-  const federal = calculateFederalTax(ordinaryTaxableIncome, filingStatus);
+  const federal = calculateFederalTax(ordinaryTaxableIncome, filingStatus, taxYear);
   const capitalGains = calculateStackedTax(
     gainsTaxableIncome,
     ordinaryTaxableIncome,
-    capitalGainsBrackets(filingStatus),
+    capitalGainsBrackets(filingStatus, taxYear),
   );
 
   const incomeTaxBeforeCredits = federal.tax + capitalGains.tax;
@@ -664,17 +679,20 @@ function buildScenario(
     agi,
     filingStatus,
     incomeTaxBeforeCredits,
+    taxYear,
   );
   const federalIncomeTax = clampToZero(incomeTaxBeforeCredits - credits.applied);
 
   const additionalMedicare = calculateAdditionalMedicare(
     wages + selfEmployment.netEarnings,
     filingStatus,
+    taxYear,
   );
   const netInvestmentIncomeTax = calculateNetInvestmentIncomeTax(
     netInvestmentIncome(income),
     agi,
     filingStatus,
+    taxYear,
   );
 
   const totalFederalTax =
@@ -684,11 +702,20 @@ function buildScenario(
     additionalMedicare +
     netInvestmentIncomeTax;
 
-  // The 2026 state dataset carries no standard deductions or exemptions, so the
-  // only subtraction available at state level is the gift itself — and only in
-  // states that allow a charitable deduction at all.
-  const stateDonation = state.allowsCharitableDeduction ? donation : 0;
-  const stateTaxableIncome = clampToZero(agi - stateDonation);
+  // The state stacks its own standard deduction against the gift the same way
+  // the federal return does. Where a state allows no charitable deduction it
+  // has no itemized route either, so neither the gift nor the other itemized
+  // deductions come off — the standard deduction alone does. The exemption is
+  // a flat subtraction on top, taken however the filer deducts.
+  const stateItemizes = state.allowsCharitableDeduction;
+  const stateDeduction =
+    totalDeduction(
+      state.standardDeduction,
+      stateItemizes ? donation : 0,
+      deductionMode,
+      stateItemizes ? input.otherItemizedDeductions : 0,
+    ) + state.personalExemption;
+  const stateTaxableIncome = clampToZero(agi - stateDeduction);
   const stateResult = calculateStateTax(stateTaxableIncome, state);
 
   const totalTax = totalFederalTax + stateResult.tax;
@@ -698,7 +725,9 @@ function buildScenario(
     label,
     donationApplied: donation,
     agi,
+    federalDeduction,
     federalTaxableIncome,
+    stateDeduction,
     stateTaxableIncome,
     ordinaryTaxableIncome,
     gainsTaxableIncome,
@@ -724,7 +753,8 @@ function buildScenario(
  * optimization metrics that compare them. Pure — safe to run on every keystroke.
  */
 export function buildComparison(input: CalculatorInput): TaxComparison {
-  const state = getState(input.stateCode);
+  const { taxYear } = input;
+  const state = getState(input.stateCode, taxYear);
   const netProfit = calculateNetProfit(input.income, input.expenses);
   const donationEntered = clampToZero(input.donation);
 
@@ -733,6 +763,7 @@ export function buildComparison(input: CalculatorInput): TaxComparison {
   const limit = calculateCharitableLimit(
     donationEntered,
     netProfit,
+    taxYear,
     input.charityType,
     input.propertyType,
   );
@@ -740,14 +771,19 @@ export function buildComparison(input: CalculatorInput): TaxComparison {
   const cappedDonation = limit.deductible;
 
   // The floor comes off the gift that survives the ceiling, so a gift smaller
-  // than 0.5% of AGI deducts nothing. Off unless the caller asks for it.
-  const floorAmount = input.applyCharitableFloor
-    ? Math.min(
-        cappedDonation,
-        calculateAgiParts(input.income, input.expenses, input.filingStatus).agi *
-          CHARITABLE_AGI_FLOOR,
-      )
+  // than the floor (0.5% of AGI from 2026) deducts nothing. Off unless the
+  // caller asks for it, and zero in years before it existed.
+  const floorRate = input.applyCharitableFloor
+    ? getFederalTax(taxYear).charitable_deduction_limits.agi_floor
     : 0;
+  const floorAmount =
+    floorRate > 0
+      ? Math.min(
+          cappedDonation,
+          calculateAgiParts(input.income, input.expenses, input.filingStatus, taxYear)
+            .agi * floorRate,
+        )
+      : 0;
   const deductibleDonation = cappedDonation - floorAmount;
 
   const scenarioA = buildScenario("Without donation", input, 0, state);
@@ -760,6 +796,9 @@ export function buildComparison(input: CalculatorInput): TaxComparison {
   const taxSavings = scenarioA.totalTax - scenarioB.totalTax;
 
   return {
+    taxYear,
+    stateTaxYear: stateTaxYear(taxYear),
+    federalStandardDeduction: federalStandardDeduction(input.filingStatus, taxYear),
     netProfit,
     donationEntered,
     deductibleDonation,
