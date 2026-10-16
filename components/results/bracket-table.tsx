@@ -18,6 +18,8 @@ export interface BasisLine {
   value: number;
   /** A subtraction, shown with a minus sign. */
   deduction?: boolean;
+  /** Added back, shown with a plus sign. */
+  addition?: boolean;
   /** The result line, set off by a rule. */
   total?: boolean;
 }
@@ -62,7 +64,9 @@ export function BracketTable({
               >
                 {line.deduction
                   ? `−${formatCurrency(line.value)}`
-                  : formatCurrency(line.value)}
+                  : line.addition
+                    ? `+${formatCurrency(line.value)}`
+                    : formatCurrency(line.value)}
               </dd>
             </div>
           ))}

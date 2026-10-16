@@ -30,7 +30,9 @@ export function StepResults({
     stateEntry,
     donationEntered,
     donationCarryforward,
+    deductibleDonation,
     charitableFloorAmount,
+    deductionCapCost,
     agiLimitAmount,
     stateAllowsCharitableDeduction,
   } = comparison;
@@ -50,12 +52,21 @@ export function StepResults({
       {donationCarryforward > 0 ||
       stateNoDeduction ||
       charitableFloorAmount > 0 ||
+      deductionCapCost > 0 ||
       stateYearDiffers ? (
         <div className="space-y-2 px-1 py-2">
           {charitableFloorAmount > 0 ? (
             <Note>
               The first {formatCurrency(charitableFloorAmount)} of your gift (0.5%
-              of income) isn&apos;t deductible under the 2026 floor.
+              of income) isn&apos;t deductible under the 2026 floor, leaving{" "}
+              {formatCurrency(deductibleDonation)} to deduct.
+            </Note>
+          ) : null}
+          {deductionCapCost > 0 ? (
+            <Note>
+              From 2026, deductions against income in the 37% bracket save 35¢
+              on the dollar, not 37¢. That cap takes{" "}
+              {formatCurrency(deductionCapCost)} off what your gift saves.
             </Note>
           ) : null}
           {donationCarryforward > 0 ? (
@@ -131,9 +142,16 @@ export function StepResults({
 /**
  * Names what came off AGI. The engine takes the standard deduction, the
  * standard deduction plus the gift, or an itemized total, and only the amount
- * says which — so read it back from that.
+ * says which — so read it back from that. An itemized total is split into the
+ * gift and everything else, then `capped` — what the 35% cap disallowed —
+ * goes back on.
  */
-function deductionLines(total: number, standard: number, gift: number): BasisLine[] {
+function deductionLines(
+  total: number,
+  standard: number,
+  gift: number,
+  capped = 0,
+): BasisLine[] {
   if (total === standard) {
     return [{ label: "Standard deduction", value: standard, deduction: true }];
   }
@@ -143,13 +161,26 @@ function deductionLines(total: number, standard: number, gift: number): BasisLin
       { label: "Charitable gift", value: gift, deduction: true },
     ];
   }
-  return [{ label: "Itemized deductions", value: total, deduction: true }];
+  return [
+    {
+      label: gift > 0 ? "Other itemized deductions" : "Itemized deductions",
+      value: total + capped - gift,
+      deduction: true,
+    },
+    { label: "Charitable gift", value: gift, deduction: true },
+    { label: "Disallowed by the 35% cap", value: capped, addition: true },
+  ];
 }
 
 function federalBasis(scenario: ScenarioBreakdown, standard: number): BasisLine[] {
   const lines: BasisLine[] = [
     { label: "Adjusted gross income", value: scenario.agi },
-    ...deductionLines(scenario.federalDeduction, standard, scenario.donationApplied),
+    ...deductionLines(
+      scenario.federalDeduction,
+      standard,
+      scenario.donationApplied,
+      scenario.itemizedDeductionReduction,
+    ),
   ];
   // These brackets only see ordinary income; long-term gains take their own table.
   if (scenario.gainsTaxableIncome > 0) {

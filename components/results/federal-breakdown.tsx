@@ -65,6 +65,13 @@ export function FederalBreakdown({ scenario }: { scenario: ScenarioBreakdown }) 
         </div>
       </dl>
 
+      {scenario.deductionCapClawback > 0 ? (
+        <p className="mt-3 text-[0.8rem] leading-relaxed text-muted-foreground">
+          Includes {formatCurrency(scenario.deductionCapClawback)} from the 35%
+          cap on itemized deductions.
+        </p>
+      ) : null}
+
       {credits.phasedOut > 0 ? (
         <p className="mt-3 text-[0.8rem] leading-relaxed text-muted-foreground">
           {formatCurrency(credits.phasedOut)} of your dependent credits was lost

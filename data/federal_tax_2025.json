@@ -186,5 +186,11 @@
     "notes": "IRC 170(b)(1)(A) — cash gifts to 501(c)(3) public charities are deductible up to this share of AGI. Excess carries forward up to five years. `agi_floor` is 0: OBBBA's 0.5%-of-AGI floor on itemized charitable deductions starts with tax years beginning after Dec 31, 2025, so a 2025 gift is deductible from the first dollar.",
     "cash_public_charity_agi_limit": 0.6,
     "agi_floor": 0
+  },
+
+  "itemized_deduction_limit": {
+    "name": "Limitation on itemized deductions",
+    "notes": "`benefit_rate_cap` is null: OBBBA's IRC 68 cap, which holds the value of an itemized deduction to 35% for top-bracket filers, starts with tax years beginning after Dec 31, 2025. A 2025 itemized deduction is worth the full marginal rate.",
+    "benefit_rate_cap": null
   }
 }

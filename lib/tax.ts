@@ -84,7 +84,7 @@ export function calculateCharitableLimit(
  * Quick Estimate answers as engine input: the one AGI figure enters as ordinary
  * income, so the engine's AGI equals it. "Itemized" is the real IRS rule — the
  * gift only helps once itemizing beats the standard deduction — and is when the
- * charitable floor (from 2026) applies.
+ * charitable floor and the 35% cap (both from 2026) apply.
  */
 export function quickEstimateToCalculatorInput(
   quick: QuickEstimateInput,
@@ -554,6 +554,120 @@ function totalDeduction(
 }
 
 /**
+ * The 35% cap's terms for this return: the share of itemized deductions it
+ * removes (2/37), and the income above the 37% bracket it is measured against.
+ * The statute takes taxable income before the cut with the itemized deductions
+ * added back — with no deduction between AGI and the itemized ones here, that
+ * is AGI. A zero share in years without the cap.
+ */
+function itemizedLimitTerms(
+  agi: number,
+  status: FilingStatus,
+  taxYear: TaxYear,
+): { rate: number; exposedIncome: number } {
+  const cap = getFederalTax(taxYear).itemized_deduction_limit.benefit_rate_cap;
+  const brackets = federalBrackets(status, taxYear);
+  const top = brackets[brackets.length - 1];
+  if (cap === null || !top || top.rate <= cap) return { rate: 0, exposedIncome: 0 };
+
+  return {
+    rate: (top.rate - cap) / top.rate,
+    exposedIncome: clampToZero(clampToZero(agi) - top.min),
+  };
+}
+
+/**
+ * Itemized deductions lost to the 35% cap — IRC 68 as OBBBA rewrote it, from
+ * 2026. They shrink by 2/37 of the lesser of the deductions themselves or the
+ * income above where the 37% bracket begins, so a dollar deducted against 37%
+ * income saves 35¢. It reaches every itemized deduction, not just the gift,
+ * and runs last — after the gift's ceiling and floor.
+ */
+export function calculateItemizedDeductionLimit(
+  itemizedDeductions: number,
+  agi: number,
+  status: FilingStatus,
+  taxYear: TaxYear,
+): number {
+  const { rate, exposedIncome } = itemizedLimitTerms(agi, status, taxYear);
+  return rate * Math.min(clampToZero(itemizedDeductions), exposedIncome);
+}
+
+/**
+ * The cap run backwards: the itemized total that still leaves `allowed` once
+ * the cap has taken its share. Up to the exposed income each dollar keeps
+ * 35/37 of itself; past it the cut is fixed, so further dollars count in full.
+ */
+function itemizedBeforeLimit(
+  allowed: number,
+  agi: number,
+  status: FilingStatus,
+  taxYear: TaxYear,
+): number {
+  const { rate, exposedIncome } = itemizedLimitTerms(agi, status, taxYear);
+  return allowed <= (1 - rate) * exposedIncome
+    ? allowed / (1 - rate)
+    : allowed + rate * exposedIncome;
+}
+
+/**
+ * The federal deduction, and how much of an itemized total the 35% cap took
+ * from it. Only an itemizing return is cut; one cut below the standard
+ * deduction just takes the standard deduction instead.
+ */
+function calculateFederalDeduction(
+  input: CalculatorInput,
+  donation: number,
+  agi: number,
+): { deduction: number; itemizedReduction: number } {
+  const { taxYear, filingStatus, deductionMode, otherItemizedDeductions = 0 } = input;
+  const standardDeduction = federalStandardDeduction(filingStatus, taxYear);
+  const uncapped = totalDeduction(
+    standardDeduction,
+    donation,
+    deductionMode,
+    otherItemizedDeductions,
+  );
+  if (deductionMode !== "itemized") return { deduction: uncapped, itemizedReduction: 0 };
+
+  const itemized = clampToZero(otherItemizedDeductions) + donation;
+  const deduction = Math.max(
+    standardDeduction,
+    itemized - calculateItemizedDeductionLimit(itemized, agi, filingStatus, taxYear),
+  );
+  return { deduction, itemizedReduction: uncapped - deduction };
+}
+
+/**
+ * Federal income tax before credits on one taxable income. Gains sit on top:
+ * deductions eat ordinary income first, and whatever gains survive are taxed
+ * at preferential rates from the ordinary income upward.
+ */
+function calculateIncomeTax(
+  taxableIncome: number,
+  gains: number,
+  status: FilingStatus,
+  taxYear: TaxYear,
+) {
+  const gainsTaxableIncome = Math.min(gains, taxableIncome);
+  const ordinaryTaxableIncome = taxableIncome - gainsTaxableIncome;
+  const federal = calculateFederalTax(ordinaryTaxableIncome, status, taxYear);
+  const capitalGains = calculateStackedTax(
+    gainsTaxableIncome,
+    ordinaryTaxableIncome,
+    capitalGainsBrackets(status, taxYear),
+  );
+
+  return {
+    gainsTaxableIncome,
+    ordinaryTaxableIncome,
+    federal,
+    capitalGains,
+    tax: federal.tax + capitalGains.tax,
+  };
+}
+
+/**
  * AGI, and the Social Security figure it depends on. Independent of the
  * charitable gift — that comes off below the line — so both scenarios and the
  * bracket-target solver can share one computation.
@@ -612,13 +726,7 @@ export function calculateBracketTarget(
   const gains = clampToZero(income.longTermCapitalGains);
 
   const taxableIncome = clampToZero(
-    agi -
-      totalDeduction(
-        standardDeduction,
-        givenDonation,
-        deductionMode,
-        input.otherItemizedDeductions,
-      ),
+    agi - calculateFederalDeduction(input, givenDonation, agi).deduction,
   );
   const ordinaryTaxable = clampToZero(taxableIncome - Math.min(gains, taxableIncome));
 
@@ -633,11 +741,13 @@ export function calculateBracketTarget(
 
   // Deductions come off ordinary income before they touch the gains stacked on
   // top, so the gift has to erase everything between the floor and AGI-less-gains.
+  // An itemized total must also cover what the 35% cap will take back from it.
   const deductionNeeded = agi - gains - currentBracket.min;
   const targetDonation =
     deductionMode === "stacked"
       ? deductionNeeded - standardDeduction
-      : deductionNeeded - clampToZero(input.otherItemizedDeductions ?? 0);
+      : itemizedBeforeLimit(deductionNeeded, agi, filingStatus, taxYear) -
+        clampToZero(input.otherItemizedDeductions ?? 0);
 
   const additionalDonationNeeded = clampToZero(targetDonation - givenDonation);
   if (additionalDonationNeeded <= 0) return null;
@@ -673,27 +783,30 @@ function buildScenario(
     taxYear,
   );
 
-  const federalDeduction = totalDeduction(
-    federalStandardDeduction(filingStatus, taxYear),
+  const { deduction: federalDeduction, itemizedReduction } = calculateFederalDeduction(
+    input,
     donation,
-    deductionMode,
-    input.otherItemizedDeductions,
+    agi,
   );
   const federalTaxableIncome = clampToZero(agi - federalDeduction);
+  const incomeTax = calculateIncomeTax(federalTaxableIncome, gains, filingStatus, taxYear);
+  const { gainsTaxableIncome, ordinaryTaxableIncome, federal, capitalGains } = incomeTax;
 
-  // Gains sit on top: deductions eat ordinary income first, and whatever gains
-  // survive are taxed at preferential rates from the ordinary income upward.
-  const gainsTaxableIncome = Math.min(gains, federalTaxableIncome);
-  const ordinaryTaxableIncome = federalTaxableIncome - gainsTaxableIncome;
+  // What the cap costs this return: its tax against the tax had the whole
+  // itemized total come off. Measured, not assumed to be 2% — where the
+  // deductions straddle the 37% threshold, the income added back is taxed at 35%.
+  const deductionCapClawback =
+    itemizedReduction > 0
+      ? incomeTax.tax -
+        calculateIncomeTax(
+          clampToZero(agi - federalDeduction - itemizedReduction),
+          gains,
+          filingStatus,
+          taxYear,
+        ).tax
+      : 0;
 
-  const federal = calculateFederalTax(ordinaryTaxableIncome, filingStatus, taxYear);
-  const capitalGains = calculateStackedTax(
-    gainsTaxableIncome,
-    ordinaryTaxableIncome,
-    capitalGainsBrackets(filingStatus, taxYear),
-  );
-
-  const incomeTaxBeforeCredits = federal.tax + capitalGains.tax;
+  const incomeTaxBeforeCredits = incomeTax.tax;
   const credits = calculateChildTaxCredit(
     dependents,
     agi,
@@ -757,6 +870,8 @@ function buildScenario(
     donationApplied: donation,
     agi,
     federalDeduction,
+    itemizedDeductionReduction: itemizedReduction,
+    deductionCapClawback,
     federalTaxableIncome,
     stateStandardDeduction,
     statePersonalExemption,
@@ -844,6 +959,7 @@ export function buildComparison(input: CalculatorInput): TaxComparison {
     scenarioA,
     scenarioB,
     taxSavings,
+    deductionCapCost: scenarioB.deductionCapClawback - scenarioA.deductionCapClawback,
     netCostOfGiving: donationEntered - taxSavings,
     givingDiscount: donationEntered > 0 ? taxSavings / donationEntered : 0,
     stateAllowsCharitableDeduction: state.allowsCharitableDeduction,

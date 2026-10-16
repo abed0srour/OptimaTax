@@ -183,8 +183,14 @@
   },
 
   "charitable_deduction_limits": {
-    "notes": "IRC 170(b)(1)(A) — cash gifts to 501(c)(3) public charities are deductible up to this share of AGI, a ceiling OBBBA made permanent. Excess carries forward up to five years. `agi_floor` is OBBBA's new floor on itemized charitable deductions (IRC 170(b)(1)(I)), effective for tax years beginning after Dec 31, 2025: only the part of the gift above this share of AGI is deductible. NOT modeled: the 35% cap on the value of itemized deductions for top-bracket filers, effective the same year.",
+    "notes": "IRC 170(b)(1)(A) — cash gifts to 501(c)(3) public charities are deductible up to this share of AGI, a ceiling OBBBA made permanent. Excess carries forward up to five years. `agi_floor` is OBBBA's new floor on itemized charitable deductions (IRC 170(b)(1)(I)), effective for tax years beginning after Dec 31, 2025: only the part of the gift above this share of AGI is deductible. The 35% cap on the value of itemized deductions, effective the same year, is `itemized_deduction_limit`.",
     "cash_public_charity_agi_limit": 0.6,
     "agi_floor": 0.005
+  },
+
+  "itemized_deduction_limit": {
+    "name": "Limitation on itemized deductions",
+    "notes": "IRC 68 as rewritten by OBBBA, effective for tax years beginning after Dec 31, 2025. Itemized deductions are reduced by (top rate - `benefit_rate_cap`) / top rate — 2/37 — of the lesser of the itemized deductions or the taxable income, figured before this reduction and with the itemized deductions added back, above the start of the 37% bracket. A dollar deducted against 37% income therefore saves 35 cents. Applied after every other limit, including the charitable ceiling and floor. Covers all itemized deductions, not only the gift.",
+    "benefit_rate_cap": 0.35
   }
 }

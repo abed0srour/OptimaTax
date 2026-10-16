@@ -67,6 +67,12 @@ export interface FederalTaxData {
     /** Share of AGI an itemized gift must clear before it deducts; 0 before 2026. */
     agi_floor: number;
   };
+  itemized_deduction_limit: {
+    name: string;
+    notes: string;
+    /** Most an itemized dollar can save in the top bracket (0.35 from 2026); null before the cap. */
+    benefit_rate_cap: number | null;
+  };
   self_employment_tax: {
     name: string;
     notes: string;
@@ -279,6 +285,10 @@ export interface ScenarioBreakdown {
   agi: number;
   /** Everything subtracted from AGI to reach federal taxable income. */
   federalDeduction: number;
+  /** Itemized deductions disallowed by the 35% cap (IRC 68, from 2026); already out of `federalDeduction`. */
+  itemizedDeductionReduction: number;
+  /** Federal income tax, before credits, that the 35% cap adds to this return. */
+  deductionCapClawback: number;
   federalTaxableIncome: number;
   /** The state standard deduction allowed at this AGI, after any phase-out. */
   stateStandardDeduction: number;
@@ -362,6 +372,11 @@ export interface TaxComparison {
   scenarioB: ScenarioBreakdown;
   /** scenarioA.totalTax − scenarioB.totalTax. */
   taxSavings: number;
+  /**
+   * How much less the gift saves because of the 35% cap: scenario B's clawback
+   * less scenario A's. Already inside `taxSavings`; 0 when the cap never bites.
+   */
+  deductionCapCost: number;
   /** Donation minus the tax it saved you — the real out-of-pocket cost. */
   netCostOfGiving: number;
   /** taxSavings / donation, i.e. the share of the gift the tax code absorbs. */
